@@ -184,12 +184,13 @@ POST /api/seed                     - Datos iniciales
 - [x] Control de inventario
 - [x] Módulo de Reportes con exportación Excel
 - [x] Análisis de rentabilidad
+- [x] Módulo de Compras a Proveedores con actualización automática de stock
 
 ### P1 (Siguiente Iteración)
 - [ ] Integración con facturación electrónica real (SUNAT)
-- [ ] Gestión de compras a proveedores
-- [ ] Historial de precios
+- [ ] Historial de precios de compra
 - [ ] Notificaciones de stock bajo por email
+- [ ] Órdenes de compra con múltiples entregas parciales
 
 ### P2 (Futuro)
 - [ ] Multi-sucursal
@@ -198,6 +199,7 @@ POST /api/seed                     - Datos iniciales
 - [ ] Integración con pasarelas de pago
 - [ ] App móvil nativa
 - [ ] Módulo de caja chica
+- [ ] Integración con lectores de código de barras
 
 ## Notas Técnicas
 - La facturación es SIMULADA para fines internos
