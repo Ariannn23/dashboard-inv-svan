@@ -1,0 +1,170 @@
+{
+  "identity": {
+    "name": "Inversiones Svan ERP",
+    "archetype": "Eco-Industrial Retail",
+    "vibe": "Professional, Tactile, Efficient, Trustworthy",
+    "emotional_tone": "Clarity & Speed",
+    "theme_strategy": "Light Mode Priority (High Contrast for Retail Environments)"
+  },
+  "typography": {
+    "font_family": {
+      "headings": "Outfit, sans-serif",
+      "body": "Inter, sans-serif",
+      "mono": "JetBrains Mono, monospace"
+    },
+    "weights": {
+      "headings": "600 (SemiBold) or 700 (Bold)",
+      "body": "400 (Regular) and 500 (Medium)"
+    },
+    "scale": {
+      "h1": "text-3xl md:text-4xl tracking-tight",
+      "h2": "text-2xl md:text-3xl tracking-tight",
+      "h3": "text-xl md:text-2xl font-semibold",
+      "body": "text-base leading-relaxed",
+      "small": "text-sm text-muted-foreground",
+      "tiny": "text-xs font-medium uppercase tracking-wider"
+    },
+    "import_url": "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap"
+  },
+  "colors": {
+    "palette": {
+      "primary": {
+        "DEFAULT": "#0F766E",
+        "foreground": "#FFFFFF",
+        "hover": "#115E59",
+        "description": "Teal-700: Professional, grounded, distinct from generic SaaS blue."
+      },
+      "secondary": {
+        "DEFAULT": "#10B981",
+        "foreground": "#FFFFFF",
+        "hover": "#059669",
+        "description": "Emerald-500: Freshness, Growth, 'Add to Cart' actions."
+      },
+      "accent": {
+        "DEFAULT": "#F59E0B",
+        "foreground": "#FFFFFF",
+        "description": "Amber-500: Low stock warnings, attention needed."
+      },
+      "destructive": {
+        "DEFAULT": "#EF4444",
+        "foreground": "#FFFFFF",
+        "description": "Red-500: Delete, Cancel, Out of Stock."
+      },
+      "background": {
+        "DEFAULT": "#F8FAFC",
+        "paper": "#FFFFFF",
+        "subtle": "#F1F5F9"
+      },
+      "text": {
+        "primary": "#0F172A",
+        "secondary": "#64748B",
+        "muted": "#94A3B8"
+      },
+      "border": {
+        "DEFAULT": "#E2E8F0",
+        "focus": "#0F766E"
+      }
+    },
+    "gradients": {
+      "dashboard_card": "bg-gradient-to-br from-white to-slate-50",
+      "active_nav": "bg-teal-50 text-teal-700"
+    }
+  },
+  "layout": {
+    "spacing_system": {
+      "base": "4px",
+      "container_padding": "p-4 md:p-6 lg:p-8",
+      "section_gap": "gap-6 md:gap-8"
+    },
+    "grid_system": {
+      "dashboard": "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4",
+      "pos_products": "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4",
+      "form_layout": "grid grid-cols-1 md:grid-cols-2 gap-6"
+    },
+    "structure": {
+      "mobile": {
+        "nav": "Bottom Navigation Bar (Fixed, h-16, z-50)",
+        "header": "Top Bar (Sticky, h-14, Logo + User)",
+        "pos_cart": "Slide-over Drawer or Bottom Sheet"
+      },
+      "desktop": {
+        "nav": "Left Sidebar (Collapsible, w-64)",
+        "header": "Top Bar (Breadcrumbs + Actions)",
+        "pos_layout": "Split Screen: Left 70% Products, Right 30% Sticky Cart"
+      }
+    }
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2 rounded-lg shadow-sm transition-all active:scale-95",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/90 h-10 px-4 py-2 rounded-lg shadow-sm",
+      "outline": "border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 rounded-lg",
+      "ghost": "hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2 rounded-lg",
+      "pos_action": "h-14 text-lg font-semibold w-full rounded-xl shadow-md"
+    },
+    "cards": {
+      "base": "bg-card text-card-foreground rounded-xl border border-border shadow-sm",
+      "hover": "hover:shadow-md transition-shadow duration-200",
+      "product": "flex flex-col p-3 gap-2 cursor-pointer active:scale-95 transition-transform bg-white rounded-xl border border-slate-100 shadow-sm hover:border-primary/50"
+    },
+    "inputs": {
+      "base": "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+      "search": "pl-10 bg-slate-50 border-slate-200 focus:bg-white transition-colors"
+    },
+    "status_badges": {
+      "success": "bg-emerald-100 text-emerald-700 border-emerald-200",
+      "warning": "bg-amber-100 text-amber-700 border-amber-200",
+      "error": "bg-red-100 text-red-700 border-red-200",
+      "neutral": "bg-slate-100 text-slate-700 border-slate-200"
+    }
+  },
+  "visual_enhancers": {
+    "shadows": {
+      "soft": "0 2px 8px -2px rgba(15, 23, 42, 0.05)",
+      "float": "0 10px 30px -10px rgba(15, 23, 42, 0.1)"
+    },
+    "borders": {
+      "subtle": "1px solid #E2E8F0",
+      "active": "1px solid #0F766E"
+    },
+    "radius": {
+      "default": "0.5rem",
+      "large": "0.75rem",
+      "pill": "9999px"
+    }
+  },
+  "image_urls": {
+    "placeholders": {
+      "product_generic": "https://images.unsplash.com/photo-1654245137394-1de7e1e16f6f?auto=format&fit=crop&w=400&q=80",
+      "product_pet": "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=400&q=80",
+      "user_avatar": "https://images.unsplash.com/photo-1758575603874-102a10a06dcb?auto=format&fit=crop&w=150&q=80",
+      "logo_placeholder": "https://placehold.co/200x60/0F766E/FFFFFF?text=SVAN+ERP"
+    }
+  },
+  "instructions_to_main_agent": {
+    "setup": [
+      "Install 'lucide-react' for icons.",
+      "Install 'recharts' for dashboard charts.",
+      "Configure 'tailwind.config.js' with the custom colors (Teal/Emerald).",
+      "Ensure 'index.css' imports the Google Fonts (Outfit/Inter)."
+    ],
+    "layout_rules": [
+      "MOBILE FIRST: Always design the mobile view first. The POS screen must be usable with one hand on a phone.",
+      "TOUCH TARGETS: All interactive elements on the POS screen must be at least 44px height.",
+      "NAVIGATION: Use a Bottom Navigation Bar for mobile (Dashboard, POS, Inventory, Menu). Use a Sidebar for Desktop.",
+      "POS SCREEN: On Desktop, split screen (Products Left, Cart Right). On Mobile, Cart is a floating button that opens a Drawer."
+    ],
+    "component_overrides": [
+      "Override Shadcn 'Button' to be slightly more rounded (rounded-lg).",
+      "Override Shadcn 'Card' to have lighter borders and softer shadows.",
+      "Use 'Sonner' for all toast notifications (Success/Error)."
+    ]
+  },
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Do not use gradients for backgrounds. Keep it clean and flat.",
+    "Use 'data-testid' for all interactive elements.",
+    "Ensure high contrast for text (Slate-900 on Slate-50).",
+    "Animations should be fast (150ms-200ms). No slow drifts.",
+    "Use 'lucide-react' icons: 'LayoutDashboard' (Dashboard), 'ShoppingCart' (POS), 'Package' (Inventory), 'Users' (Clients), 'Settings' (Config)."
+  ]
+}
