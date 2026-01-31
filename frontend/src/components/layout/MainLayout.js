@@ -25,6 +25,7 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 const navItems = [
@@ -35,6 +36,7 @@ const navItems = [
   { path: '/clientes', label: 'Clientes', icon: Users },
   { path: '/proveedores', label: 'Proveedores', icon: Truck },
   { path: '/historial-ventas', label: 'Historial', icon: History },
+  { path: '/reportes', label: 'Reportes', icon: FileSpreadsheet },
 ];
 
 const mobileNavItems = [
