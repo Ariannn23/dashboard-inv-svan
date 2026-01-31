@@ -477,6 +477,218 @@ async def delete_proveedor(proveedor_id: str, current_user: dict = Depends(requi
     return {"message": "Proveedor eliminado"}
 
 # ===================
+# COMPRAS A PROVEEDORES
+# ===================
+async def get_next_orden_number() -> str:
+    """Genera número de orden de compra correlativo"""
+    last_compra = await db.compras.find_one(
+        {},
+        sort=[("numero_orden", -1)]
+    )
+    
+    if last_compra:
+        last_num = last_compra.get("numero_orden", "OC-00000000")
+        num_part = int(last_num.split("-")[1]) + 1
+    else:
+        num_part = 1
+    
+    return f"OC-{num_part:08d}"
+
+@api_router.post("/compras", response_model=dict)
+async def create_compra(compra: CompraCreate, current_user: dict = Depends(require_admin)):
+    """Crea una nueva orden de compra a proveedor"""
+    # Validar proveedor
+    proveedor = await db.proveedores.find_one({"id": compra.proveedor_id}, {"_id": 0})
+    if not proveedor:
+        raise HTTPException(status_code=400, detail="Proveedor no encontrado")
+    
+    # Calcular totales
+    subtotal = 0
+    items_with_details = []
+    
+    for item in compra.items:
+        producto = await db.productos.find_one({"id": item.producto_id}, {"_id": 0})
+        if not producto:
+            raise HTTPException(status_code=400, detail=f"Producto {item.producto_id} no encontrado")
+        
+        item_subtotal = item.cantidad * item.precio_unitario
+        subtotal += item_subtotal
+        items_with_details.append(CompraItem(
+            producto_id=item.producto_id,
+            producto_nombre=producto["nombre"],
+            cantidad=item.cantidad,
+            precio_unitario=item.precio_unitario,
+            subtotal=item_subtotal
+        ))
+    
+    igv = round(subtotal * 0.18, 2)
+    total = round(subtotal + igv, 2)
+    numero_orden = await get_next_orden_number()
+    
+    compra_obj = Compra(
+        proveedor_id=compra.proveedor_id,
+        proveedor_nombre=proveedor["razon_social"],
+        proveedor_ruc=proveedor["ruc"],
+        items=[item.model_dump() for item in items_with_details],
+        subtotal=subtotal,
+        igv=igv,
+        total=total,
+        numero_orden=numero_orden,
+        estado=EstadoCompra.PENDIENTE,
+        fecha_entrega_estimada=compra.fecha_entrega_estimada,
+        usuario_id=current_user["id"],
+        usuario_nombre=current_user["nombre"],
+        observaciones=compra.observaciones
+    )
+    
+    doc = compra_obj.model_dump()
+    doc["fecha"] = doc["fecha"].isoformat()
+    
+    await db.compras.insert_one(doc)
+    return {"message": "Orden de compra creada", "id": doc["id"], "numero_orden": numero_orden}
+
+@api_router.get("/compras", response_model=List[dict])
+async def get_compras(
+    estado: Optional[str] = None,
+    proveedor_id: Optional[str] = None,
+    current_user: dict = Depends(get_current_user)
+):
+    """Lista todas las órdenes de compra"""
+    query = {}
+    if estado and estado != 'all':
+        query["estado"] = estado
+    if proveedor_id:
+        query["proveedor_id"] = proveedor_id
+    
+    compras = await db.compras.find(query, {"_id": 0}).sort("fecha", -1).to_list(1000)
+    return compras
+
+@api_router.get("/compras/{compra_id}")
+async def get_compra(compra_id: str, current_user: dict = Depends(get_current_user)):
+    """Obtiene detalle de una orden de compra"""
+    compra = await db.compras.find_one({"id": compra_id}, {"_id": 0})
+    if not compra:
+        raise HTTPException(status_code=404, detail="Orden de compra no encontrada")
+    return compra
+
+@api_router.post("/compras/{compra_id}/recibir", response_model=dict)
+async def recibir_compra(compra_id: str, current_user: dict = Depends(require_admin)):
+    """Marca una compra como recibida y actualiza el inventario automáticamente"""
+    compra = await db.compras.find_one({"id": compra_id}, {"_id": 0})
+    if not compra:
+        raise HTTPException(status_code=404, detail="Orden de compra no encontrada")
+    
+    if compra.get("estado") == "recibida":
+        raise HTTPException(status_code=400, detail="Esta compra ya fue recibida")
+    
+    if compra.get("estado") == "cancelada":
+        raise HTTPException(status_code=400, detail="No se puede recibir una compra cancelada")
+    
+    # Actualizar estado de la compra
+    fecha_recepcion = datetime.now(timezone.utc).isoformat()
+    await db.compras.update_one(
+        {"id": compra_id},
+        {"$set": {"estado": "recibida", "fecha_recepcion": fecha_recepcion}}
+    )
+    
+    # Actualizar inventario para cada producto
+    for item in compra.get("items", []):
+        producto = await db.productos.find_one({"id": item["producto_id"]}, {"_id": 0})
+        if producto:
+            nuevo_stock = producto["stock"] + item["cantidad"]
+            
+            # Actualizar stock del producto
+            await db.productos.update_one(
+                {"id": item["producto_id"]},
+                {"$set": {
+                    "stock": nuevo_stock,
+                    "precio_compra": item["precio_unitario"],  # Actualizar precio de compra
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                }}
+            )
+            
+            # Registrar movimiento en Kardex
+            mov = Movimiento(
+                producto_id=item["producto_id"],
+                producto_nombre=item["producto_nombre"],
+                tipo=TipoMovimiento.ENTRADA,
+                cantidad=item["cantidad"],
+                stock_anterior=producto["stock"],
+                stock_nuevo=nuevo_stock,
+                referencia=compra_id,
+                observaciones=f"Compra {compra['numero_orden']} - {compra['proveedor_nombre']}",
+                usuario_id=current_user["id"],
+                usuario_nombre=current_user["nombre"]
+            )
+            mov_doc = mov.model_dump()
+            mov_doc["fecha"] = mov_doc["fecha"].isoformat()
+            await db.movimientos.insert_one(mov_doc)
+    
+    return {
+        "message": "Compra recibida y stock actualizado",
+        "productos_actualizados": len(compra.get("items", []))
+    }
+
+@api_router.post("/compras/{compra_id}/cancelar", response_model=dict)
+async def cancelar_compra(compra_id: str, current_user: dict = Depends(require_admin)):
+    """Cancela una orden de compra pendiente"""
+    compra = await db.compras.find_one({"id": compra_id}, {"_id": 0})
+    if not compra:
+        raise HTTPException(status_code=404, detail="Orden de compra no encontrada")
+    
+    if compra.get("estado") == "recibida":
+        raise HTTPException(status_code=400, detail="No se puede cancelar una compra ya recibida")
+    
+    await db.compras.update_one(
+        {"id": compra_id},
+        {"$set": {"estado": "cancelada"}}
+    )
+    
+    return {"message": "Orden de compra cancelada"}
+
+@api_router.delete("/compras/{compra_id}")
+async def delete_compra(compra_id: str, current_user: dict = Depends(require_admin)):
+    """Elimina una orden de compra (solo si está cancelada o pendiente)"""
+    compra = await db.compras.find_one({"id": compra_id}, {"_id": 0})
+    if not compra:
+        raise HTTPException(status_code=404, detail="Orden de compra no encontrada")
+    
+    if compra.get("estado") == "recibida":
+        raise HTTPException(status_code=400, detail="No se puede eliminar una compra recibida")
+    
+    result = await db.compras.delete_one({"id": compra_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Orden de compra no encontrada")
+    return {"message": "Orden de compra eliminada"}
+
+@api_router.get("/compras/stats/resumen")
+async def get_compras_stats(current_user: dict = Depends(get_current_user)):
+    """Obtiene estadísticas de compras"""
+    today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = today.replace(day=1)
+    
+    # Compras del mes (recibidas)
+    compras_mes = await db.compras.find(
+        {"estado": "recibida", "fecha": {"$gte": month_start.isoformat()}},
+        {"_id": 0}
+    ).to_list(1000)
+    total_mes = sum(c.get("total", 0) for c in compras_mes)
+    
+    # Compras pendientes
+    compras_pendientes = await db.compras.count_documents({"estado": "pendiente"})
+    
+    # Total histórico
+    todas_compras = await db.compras.find({"estado": "recibida"}, {"_id": 0}).to_list(10000)
+    total_historico = sum(c.get("total", 0) for c in todas_compras)
+    
+    return {
+        "compras_mes": total_mes,
+        "compras_mes_count": len(compras_mes),
+        "compras_pendientes": compras_pendientes,
+        "total_historico": total_historico
+    }
+
+# ===================
 # VENTAS ENDPOINTS
 # ===================
 async def get_next_comprobante_number(tipo: TipoComprobante) -> str:
