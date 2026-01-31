@@ -202,6 +202,43 @@ class Movimiento(MovimientoBase):
     usuario_id: str
     usuario_nombre: str
 
+# Compra a Proveedor
+class EstadoCompra(str, Enum):
+    PENDIENTE = "pendiente"
+    RECIBIDA = "recibida"
+    CANCELADA = "cancelada"
+
+class CompraItem(BaseModel):
+    producto_id: str
+    producto_nombre: str
+    cantidad: int
+    precio_unitario: float
+    subtotal: float
+
+class CompraCreate(BaseModel):
+    proveedor_id: str
+    items: List[CompraItem]
+    observaciones: Optional[str] = None
+    fecha_entrega_estimada: Optional[str] = None
+
+class Compra(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    fecha: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    proveedor_id: str
+    proveedor_nombre: str
+    proveedor_ruc: str
+    items: List[CompraItem]
+    subtotal: float
+    igv: float
+    total: float
+    numero_orden: str
+    estado: EstadoCompra = EstadoCompra.PENDIENTE
+    fecha_entrega_estimada: Optional[str] = None
+    fecha_recepcion: Optional[str] = None
+    usuario_id: str
+    usuario_nombre: str
+    observaciones: Optional[str] = None
+
 # ===================
 # AUTH HELPERS
 # ===================
