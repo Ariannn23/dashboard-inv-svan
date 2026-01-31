@@ -65,6 +65,7 @@ const AppRoutes = () => {
                   <Route path="/historial-ventas" element={<HistorialVentas />} />
                   <Route path="/inventario" element={<Inventario />} />
                   <Route path="/reportes" element={<Reportes />} />
+                  <Route path="/compras" element={<Compras />} />
                   <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </MainLayout>
