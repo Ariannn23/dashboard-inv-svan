@@ -84,7 +84,22 @@ Sistema ERP completo para gestión de inventario y ventas de alimentos para anim
 - Registro de salidas
 - Historial de movimientos
 
-### 9. UX/UI
+### 9. Módulo de Reportes y Análisis (NUEVO ✨)
+- **Exportación Excel:**
+  - Reporte de Ventas (con filtros de fecha y tipo comprobante)
+  - Reporte de Inventario (stock actual + Kardex + alertas stock bajo)
+  - Reporte de Clientes (con historial de compras)
+- **Análisis de Rentabilidad:**
+  - Ingresos, Costos, Ganancia Bruta y Margen Global
+  - Top 10 productos más rentables con margen %
+- **Ventas por Categoría:**
+  - Gráfico Pie con distribución de ventas
+  - Estadísticas de unidades vendidas
+- **Ventas por Vendedor:**
+  - Gráfico de barras por vendedor
+  - Promedio por venta
+
+### 10. UX/UI
 - Diseño mobile-first
 - Responsive 100%
 - Sidebar en desktop
