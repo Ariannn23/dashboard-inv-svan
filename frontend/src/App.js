@@ -16,6 +16,7 @@ import Ventas from "./pages/Ventas";
 import HistorialVentas from "./pages/HistorialVentas";
 import Inventario from "./pages/Inventario";
 import Reportes from "./pages/Reportes";
+import Compras from "./pages/Compras";
 
 // Layout
 import MainLayout from "./components/layout/MainLayout";
