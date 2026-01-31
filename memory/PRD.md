@@ -143,6 +143,14 @@ GET  /api/dashboard/ventas-recientes
 GET  /api/dashboard/productos-top
 GET  /api/dashboard/ventas-por-periodo
 
+# REPORTES (NUEVO ✨)
+POST /api/reportes/ventas/excel       - Exportar ventas a Excel (con filtros)
+GET  /api/reportes/inventario/excel   - Exportar inventario a Excel
+GET  /api/reportes/clientes/excel     - Exportar clientes a Excel
+GET  /api/reportes/rentabilidad       - Análisis de rentabilidad
+GET  /api/reportes/ventas-por-categoria - Ventas agrupadas por categoría
+GET  /api/reportes/ventas-por-vendedor  - Ventas agrupadas por vendedor
+
 POST /api/seed                     - Datos iniciales
 ```
 
