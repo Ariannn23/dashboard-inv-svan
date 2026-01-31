@@ -816,6 +816,385 @@ async def get_ventas_por_periodo(dias: int = 7, current_user: dict = Depends(get
     return result
 
 # ===================
+# REPORTES Y EXPORTACIÓN EXCEL
+# ===================
+
+class ReporteVentasRequest(BaseModel):
+    fecha_inicio: Optional[str] = None
+    fecha_fin: Optional[str] = None
+    tipo_comprobante: Optional[str] = None
+
+@api_router.post("/reportes/ventas/excel")
+async def exportar_ventas_excel(
+    request: ReporteVentasRequest,
+    current_user: dict = Depends(get_current_user)
+):
+    """Exporta reporte de ventas a Excel"""
+    query = {}
+    if request.tipo_comprobante and request.tipo_comprobante != 'all':
+        query["tipo_comprobante"] = request.tipo_comprobante
+    if request.fecha_inicio:
+        query["fecha"] = {"$gte": request.fecha_inicio}
+    if request.fecha_fin:
+        if "fecha" in query:
+            query["fecha"]["$lte"] = request.fecha_fin + "T23:59:59"
+        else:
+            query["fecha"] = {"$lte": request.fecha_fin + "T23:59:59"}
+    
+    ventas = await db.ventas.find(query, {"_id": 0}).sort("fecha", -1).to_list(10000)
+    
+    buffer = BytesIO()
+    workbook = xlsxwriter.Workbook(buffer, {'in_memory': True})
+    
+    # Formatos
+    header_format = workbook.add_format({
+        'bold': True, 'bg_color': '#0F766E', 'font_color': 'white',
+        'border': 1, 'align': 'center', 'valign': 'vcenter'
+    })
+    money_format = workbook.add_format({'num_format': 'S/ #,##0.00', 'border': 1})
+    date_format = workbook.add_format({'num_format': 'dd/mm/yyyy hh:mm', 'border': 1})
+    cell_format = workbook.add_format({'border': 1})
+    total_format = workbook.add_format({
+        'bold': True, 'bg_color': '#E2E8F0', 'num_format': 'S/ #,##0.00', 'border': 1
+    })
+    
+    # Hoja de Resumen de Ventas
+    ws_resumen = workbook.add_worksheet('Resumen Ventas')
+    ws_resumen.set_column('A:A', 20)
+    ws_resumen.set_column('B:G', 15)
+    
+    headers = ['N° Comprobante', 'Fecha', 'Cliente', 'Tipo', 'Subtotal', 'IGV', 'Total']
+    for col, header in enumerate(headers):
+        ws_resumen.write(0, col, header, header_format)
+    
+    total_ventas = 0
+    total_igv = 0
+    for row, venta in enumerate(ventas, 1):
+        ws_resumen.write(row, 0, venta.get('numero_comprobante', ''), cell_format)
+        ws_resumen.write(row, 1, venta.get('fecha', '')[:16].replace('T', ' '), cell_format)
+        ws_resumen.write(row, 2, venta.get('cliente_nombre', 'Cliente General'), cell_format)
+        ws_resumen.write(row, 3, 'Boleta' if venta.get('tipo_comprobante') == 'boleta' else 'Factura', cell_format)
+        ws_resumen.write(row, 4, venta.get('subtotal', 0), money_format)
+        ws_resumen.write(row, 5, venta.get('igv', 0), money_format)
+        ws_resumen.write(row, 6, venta.get('total', 0), money_format)
+        total_ventas += venta.get('total', 0)
+        total_igv += venta.get('igv', 0)
+    
+    # Totales
+    last_row = len(ventas) + 1
+    ws_resumen.write(last_row, 3, 'TOTALES:', header_format)
+    ws_resumen.write(last_row, 4, total_ventas - total_igv, total_format)
+    ws_resumen.write(last_row, 5, total_igv, total_format)
+    ws_resumen.write(last_row, 6, total_ventas, total_format)
+    
+    # Hoja de Detalle por Producto
+    ws_detalle = workbook.add_worksheet('Detalle Productos')
+    ws_detalle.set_column('A:A', 30)
+    ws_detalle.set_column('B:E', 15)
+    
+    headers_det = ['Producto', 'Cantidad Vendida', 'Precio Promedio', 'Total Ventas']
+    for col, header in enumerate(headers_det):
+        ws_detalle.write(0, col, header, header_format)
+    
+    # Agregar productos de todas las ventas
+    productos_vendidos = defaultdict(lambda: {'cantidad': 0, 'total': 0, 'precios': []})
+    for venta in ventas:
+        for item in venta.get('items', []):
+            prod_id = item.get('producto_nombre', 'Sin nombre')
+            productos_vendidos[prod_id]['cantidad'] += item.get('cantidad', 0)
+            productos_vendidos[prod_id]['total'] += item.get('subtotal', 0)
+            productos_vendidos[prod_id]['precios'].append(item.get('precio_unitario', 0))
+    
+    for row, (nombre, data) in enumerate(sorted(productos_vendidos.items(), key=lambda x: x[1]['total'], reverse=True), 1):
+        precio_prom = sum(data['precios']) / len(data['precios']) if data['precios'] else 0
+        ws_detalle.write(row, 0, nombre, cell_format)
+        ws_detalle.write(row, 1, data['cantidad'], cell_format)
+        ws_detalle.write(row, 2, precio_prom, money_format)
+        ws_detalle.write(row, 3, data['total'], money_format)
+    
+    workbook.close()
+    buffer.seek(0)
+    
+    fecha_reporte = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=reporte_ventas_{fecha_reporte}.xlsx"}
+    )
+
+@api_router.get("/reportes/inventario/excel")
+async def exportar_inventario_excel(current_user: dict = Depends(get_current_user)):
+    """Exporta inventario completo a Excel"""
+    productos = await db.productos.find({}, {"_id": 0}).to_list(10000)
+    movimientos = await db.movimientos.find({}, {"_id": 0}).sort("fecha", -1).to_list(10000)
+    
+    buffer = BytesIO()
+    workbook = xlsxwriter.Workbook(buffer, {'in_memory': True})
+    
+    # Formatos
+    header_format = workbook.add_format({
+        'bold': True, 'bg_color': '#0F766E', 'font_color': 'white',
+        'border': 1, 'align': 'center', 'valign': 'vcenter'
+    })
+    money_format = workbook.add_format({'num_format': 'S/ #,##0.00', 'border': 1})
+    cell_format = workbook.add_format({'border': 1})
+    warning_format = workbook.add_format({'border': 1, 'bg_color': '#FEF3C7'})
+    danger_format = workbook.add_format({'border': 1, 'bg_color': '#FEE2E2'})
+    total_format = workbook.add_format({
+        'bold': True, 'bg_color': '#E2E8F0', 'num_format': 'S/ #,##0.00', 'border': 1
+    })
+    
+    # Hoja de Inventario
+    ws_inv = workbook.add_worksheet('Inventario Actual')
+    ws_inv.set_column('A:A', 30)
+    ws_inv.set_column('B:H', 15)
+    
+    headers = ['Producto', 'Categoría', 'Stock', 'Stock Mín', 'Unidad', 'P. Compra', 'P. Venta', 'Valor Stock']
+    for col, header in enumerate(headers):
+        ws_inv.write(0, col, header, header_format)
+    
+    valor_total = 0
+    for row, prod in enumerate(productos, 1):
+        stock = prod.get('stock', 0)
+        stock_min = prod.get('stock_minimo', 0)
+        valor = stock * prod.get('precio_compra', 0)
+        valor_total += valor
+        
+        # Determinar formato según stock
+        fmt = cell_format
+        if stock == 0:
+            fmt = danger_format
+        elif stock <= stock_min:
+            fmt = warning_format
+        
+        ws_inv.write(row, 0, prod.get('nombre', ''), fmt)
+        ws_inv.write(row, 1, prod.get('categoria', ''), fmt)
+        ws_inv.write(row, 2, stock, fmt)
+        ws_inv.write(row, 3, stock_min, fmt)
+        ws_inv.write(row, 4, prod.get('unidad', ''), fmt)
+        ws_inv.write(row, 5, prod.get('precio_compra', 0), money_format)
+        ws_inv.write(row, 6, prod.get('precio_venta', 0), money_format)
+        ws_inv.write(row, 7, valor, money_format)
+    
+    # Total
+    last_row = len(productos) + 1
+    ws_inv.write(last_row, 6, 'VALOR TOTAL:', header_format)
+    ws_inv.write(last_row, 7, valor_total, total_format)
+    
+    # Hoja de Kardex / Movimientos
+    ws_kardex = workbook.add_worksheet('Kardex Movimientos')
+    ws_kardex.set_column('A:A', 20)
+    ws_kardex.set_column('B:B', 30)
+    ws_kardex.set_column('C:G', 15)
+    
+    headers_k = ['Fecha', 'Producto', 'Tipo', 'Cantidad', 'Stock Ant.', 'Stock Nuevo', 'Usuario']
+    for col, header in enumerate(headers_k):
+        ws_kardex.write(0, col, header, header_format)
+    
+    entrada_format = workbook.add_format({'border': 1, 'bg_color': '#D1FAE5'})
+    salida_format = workbook.add_format({'border': 1, 'bg_color': '#FEF3C7'})
+    
+    for row, mov in enumerate(movimientos, 1):
+        fmt = entrada_format if mov.get('tipo') == 'entrada' else salida_format
+        ws_kardex.write(row, 0, mov.get('fecha', '')[:16].replace('T', ' '), fmt)
+        ws_kardex.write(row, 1, mov.get('producto_nombre', ''), fmt)
+        ws_kardex.write(row, 2, 'Entrada' if mov.get('tipo') == 'entrada' else 'Salida', fmt)
+        ws_kardex.write(row, 3, mov.get('cantidad', 0), fmt)
+        ws_kardex.write(row, 4, mov.get('stock_anterior', 0), fmt)
+        ws_kardex.write(row, 5, mov.get('stock_nuevo', 0), fmt)
+        ws_kardex.write(row, 6, mov.get('usuario_nombre', ''), fmt)
+    
+    # Hoja de Stock Bajo
+    ws_bajo = workbook.add_worksheet('Stock Bajo - Alertas')
+    ws_bajo.set_column('A:A', 30)
+    ws_bajo.set_column('B:E', 15)
+    
+    headers_b = ['Producto', 'Stock Actual', 'Stock Mínimo', 'Faltan', 'Estado']
+    for col, header in enumerate(headers_b):
+        ws_bajo.write(0, col, header, header_format)
+    
+    row = 1
+    for prod in productos:
+        stock = prod.get('stock', 0)
+        stock_min = prod.get('stock_minimo', 0)
+        if stock <= stock_min:
+            faltan = stock_min - stock
+            estado = 'AGOTADO' if stock == 0 else 'BAJO'
+            fmt = danger_format if stock == 0 else warning_format
+            ws_bajo.write(row, 0, prod.get('nombre', ''), fmt)
+            ws_bajo.write(row, 1, stock, fmt)
+            ws_bajo.write(row, 2, stock_min, fmt)
+            ws_bajo.write(row, 3, faltan, fmt)
+            ws_bajo.write(row, 4, estado, fmt)
+            row += 1
+    
+    workbook.close()
+    buffer.seek(0)
+    
+    fecha_reporte = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=reporte_inventario_{fecha_reporte}.xlsx"}
+    )
+
+@api_router.get("/reportes/clientes/excel")
+async def exportar_clientes_excel(current_user: dict = Depends(get_current_user)):
+    """Exporta clientes con historial de compras a Excel"""
+    clientes = await db.clientes.find({}, {"_id": 0}).to_list(10000)
+    ventas = await db.ventas.find({}, {"_id": 0}).to_list(10000)
+    
+    # Calcular totales por cliente
+    ventas_por_cliente = defaultdict(lambda: {'count': 0, 'total': 0})
+    for venta in ventas:
+        cliente_id = venta.get('cliente_id')
+        if cliente_id:
+            ventas_por_cliente[cliente_id]['count'] += 1
+            ventas_por_cliente[cliente_id]['total'] += venta.get('total', 0)
+    
+    buffer = BytesIO()
+    workbook = xlsxwriter.Workbook(buffer, {'in_memory': True})
+    
+    header_format = workbook.add_format({
+        'bold': True, 'bg_color': '#0F766E', 'font_color': 'white',
+        'border': 1, 'align': 'center'
+    })
+    money_format = workbook.add_format({'num_format': 'S/ #,##0.00', 'border': 1})
+    cell_format = workbook.add_format({'border': 1})
+    
+    ws = workbook.add_worksheet('Clientes')
+    ws.set_column('A:A', 30)
+    ws.set_column('B:G', 18)
+    
+    headers = ['Cliente', 'Tipo', 'Documento', 'Teléfono', 'Email', 'N° Compras', 'Total Compras']
+    for col, header in enumerate(headers):
+        ws.write(0, col, header, header_format)
+    
+    for row, cliente in enumerate(clientes, 1):
+        cliente_id = cliente.get('id')
+        stats = ventas_por_cliente.get(cliente_id, {'count': 0, 'total': 0})
+        
+        ws.write(row, 0, cliente.get('nombre_razon_social', ''), cell_format)
+        ws.write(row, 1, 'Persona' if cliente.get('tipo') == 'persona' else 'Empresa', cell_format)
+        ws.write(row, 2, cliente.get('documento', ''), cell_format)
+        ws.write(row, 3, cliente.get('telefono', ''), cell_format)
+        ws.write(row, 4, cliente.get('email', ''), cell_format)
+        ws.write(row, 5, stats['count'], cell_format)
+        ws.write(row, 6, stats['total'], money_format)
+    
+    workbook.close()
+    buffer.seek(0)
+    
+    fecha_reporte = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename=reporte_clientes_{fecha_reporte}.xlsx"}
+    )
+
+@api_router.get("/reportes/rentabilidad")
+async def get_reporte_rentabilidad(current_user: dict = Depends(get_current_user)):
+    """Obtiene análisis de rentabilidad por producto"""
+    productos = await db.productos.find({}, {"_id": 0}).to_list(10000)
+    ventas = await db.ventas.find({}, {"_id": 0}).to_list(10000)
+    
+    # Calcular ventas por producto
+    ventas_por_producto = defaultdict(lambda: {'cantidad': 0, 'ingresos': 0})
+    for venta in ventas:
+        for item in venta.get('items', []):
+            prod_id = item.get('producto_id')
+            ventas_por_producto[prod_id]['cantidad'] += item.get('cantidad', 0)
+            ventas_por_producto[prod_id]['ingresos'] += item.get('subtotal', 0)
+    
+    resultado = []
+    for prod in productos:
+        prod_id = prod.get('id')
+        ventas_data = ventas_por_producto.get(prod_id, {'cantidad': 0, 'ingresos': 0})
+        
+        precio_compra = prod.get('precio_compra', 0)
+        precio_venta = prod.get('precio_venta', 0)
+        margen = precio_venta - precio_compra
+        margen_porcentaje = (margen / precio_compra * 100) if precio_compra > 0 else 0
+        ganancia_total = margen * ventas_data['cantidad']
+        
+        resultado.append({
+            'id': prod_id,
+            'nombre': prod.get('nombre', ''),
+            'categoria': prod.get('categoria', ''),
+            'precio_compra': precio_compra,
+            'precio_venta': precio_venta,
+            'margen': margen,
+            'margen_porcentaje': round(margen_porcentaje, 1),
+            'cantidad_vendida': ventas_data['cantidad'],
+            'ingresos': ventas_data['ingresos'],
+            'ganancia_total': ganancia_total,
+            'stock': prod.get('stock', 0)
+        })
+    
+    # Ordenar por ganancia total
+    resultado.sort(key=lambda x: x['ganancia_total'], reverse=True)
+    
+    # Calcular totales
+    total_ingresos = sum(r['ingresos'] for r in resultado)
+    total_ganancia = sum(r['ganancia_total'] for r in resultado)
+    total_costo = total_ingresos - total_ganancia
+    margen_global = (total_ganancia / total_costo * 100) if total_costo > 0 else 0
+    
+    return {
+        'productos': resultado,
+        'resumen': {
+            'total_ingresos': round(total_ingresos, 2),
+            'total_costo': round(total_costo, 2),
+            'total_ganancia': round(total_ganancia, 2),
+            'margen_global': round(margen_global, 1)
+        }
+    }
+
+@api_router.get("/reportes/ventas-por-categoria")
+async def get_ventas_por_categoria(current_user: dict = Depends(get_current_user)):
+    """Obtiene ventas agrupadas por categoría"""
+    ventas = await db.ventas.find({}, {"_id": 0}).to_list(10000)
+    productos = await db.productos.find({}, {"_id": 0}).to_list(10000)
+    
+    # Map productos a categorías
+    prod_categoria = {p.get('id'): p.get('categoria', 'Sin categoría') for p in productos}
+    
+    categorias = defaultdict(lambda: {'cantidad': 0, 'total': 0})
+    for venta in ventas:
+        for item in venta.get('items', []):
+            prod_id = item.get('producto_id')
+            categoria = prod_categoria.get(prod_id, 'Sin categoría')
+            categorias[categoria]['cantidad'] += item.get('cantidad', 0)
+            categorias[categoria]['total'] += item.get('subtotal', 0)
+    
+    resultado = [
+        {'categoria': cat, 'cantidad': data['cantidad'], 'total': round(data['total'], 2)}
+        for cat, data in categorias.items()
+    ]
+    resultado.sort(key=lambda x: x['total'], reverse=True)
+    
+    return resultado
+
+@api_router.get("/reportes/ventas-por-vendedor")
+async def get_ventas_por_vendedor(current_user: dict = Depends(get_current_user)):
+    """Obtiene ventas agrupadas por vendedor"""
+    ventas = await db.ventas.find({}, {"_id": 0}).to_list(10000)
+    
+    vendedores = defaultdict(lambda: {'count': 0, 'total': 0})
+    for venta in ventas:
+        vendedor = venta.get('vendedor_nombre', 'Desconocido')
+        vendedores[vendedor]['count'] += 1
+        vendedores[vendedor]['total'] += venta.get('total', 0)
+    
+    resultado = [
+        {'vendedor': v, 'ventas': data['count'], 'total': round(data['total'], 2)}
+        for v, data in vendedores.items()
+    ]
+    resultado.sort(key=lambda x: x['total'], reverse=True)
+    
+    return resultado
+
+# ===================
 # SEED DATA
 # ===================
 @api_router.post("/seed")
