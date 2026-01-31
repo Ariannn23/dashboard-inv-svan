@@ -1,34 +1,90 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* App Styles - Inversiones Svan ERP */
+
+/* Mobile-first responsive utilities */
+.touch-target {
+    min-height: 44px;
+    min-width: 44px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+/* Custom scrollbar for webkit */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
 }
 
-.App-link {
-    color: #61dafb;
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
 }
 
-@keyframes App-logo-spin {
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Animation utilities */
+.animate-fade-in {
+    animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
     from {
-        transform: rotate(0deg);
+        opacity: 0;
+        transform: translateY(-10px);
     }
     to {
-        transform: rotate(360deg);
+        opacity: 1;
+        transform: translateY(0);
     }
+}
+
+.animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* POS specific styles */
+.pos-product-card {
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.pos-product-card:active {
+    transform: scale(0.97);
+}
+
+/* Number input without spinners */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+
+/* Safe area for mobile bottom navigation */
+.safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Glass morphism card */
+.glass-card {
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }

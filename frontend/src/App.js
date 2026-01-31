@@ -1,53 +1,86 @@
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import "@/App.css";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Toaster } from "./components/ui/sonner";
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import { CartProvider } from "./context/CartContext";
+import { seedAPI } from "./lib/api";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+// Pages
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import Productos from "./pages/Productos";
+import Clientes from "./pages/Clientes";
+import Proveedores from "./pages/Proveedores";
+import Ventas from "./pages/Ventas";
+import HistorialVentas from "./pages/HistorialVentas";
+import Inventario from "./pages/Inventario";
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
+// Layout
+import MainLayout from "./components/layout/MainLayout";
 
+// Protected Route Component
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-700"></div>
+      </div>
+    );
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+};
+
+// App Routes
+const AppRoutes = () => {
   useEffect(() => {
-    helloWorldApi();
+    // Seed initial data
+    seedAPI.seed().catch(() => {});
   }, []);
 
   return (
-    <div>
-      <header className="App-header">
-        <a
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route
+        path="/*"
+        element={
+          <ProtectedRoute>
+            <CartProvider>
+              <MainLayout>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/productos" element={<Productos />} />
+                  <Route path="/clientes" element={<Clientes />} />
+                  <Route path="/proveedores" element={<Proveedores />} />
+                  <Route path="/ventas" element={<Ventas />} />
+                  <Route path="/historial-ventas" element={<HistorialVentas />} />
+                  <Route path="/inventario" element={<Inventario />} />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </MainLayout>
+            </CartProvider>
+          </ProtectedRoute>
+        }
+      />
+    </Routes>
   );
 };
 
 function App() {
   return (
-    <div className="App">
+    <AuthProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
+        <AppRoutes />
+        <Toaster position="top-right" richColors closeButton />
       </BrowserRouter>
-    </div>
+    </AuthProvider>
   );
 }
 
