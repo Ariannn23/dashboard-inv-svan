@@ -690,6 +690,8 @@ def main():
         tester.test_proveedores_crud()
         tester.test_ventas_flow()
         tester.test_inventario_operations()
+        tester.test_reportes_apis()
+        tester.test_reportes_excel_exports()
         
         # Cleanup
         tester.cleanup_created_items()
