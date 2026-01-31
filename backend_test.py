@@ -985,6 +985,7 @@ def main():
         tester.test_productos_crud()
         tester.test_clientes_crud()
         tester.test_proveedores_crud()
+        tester.test_compras_flow()  # Add compras testing
         tester.test_ventas_flow()
         tester.test_inventario_operations()
         tester.test_reportes_apis()
