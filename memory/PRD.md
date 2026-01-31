@@ -84,7 +84,7 @@ Sistema ERP completo para gestión de inventario y ventas de alimentos para anim
 - Registro de salidas
 - Historial de movimientos
 
-### 9. Módulo de Reportes y Análisis (NUEVO ✨)
+### 9. Módulo de Reportes y Análisis
 - **Exportación Excel:**
   - Reporte de Ventas (con filtros de fecha y tipo comprobante)
   - Reporte de Inventario (stock actual + Kardex + alertas stock bajo)
@@ -99,7 +99,26 @@ Sistema ERP completo para gestión de inventario y ventas de alimentos para anim
   - Gráfico de barras por vendedor
   - Promedio por venta
 
-### 10. UX/UI
+### 10. Módulo de Compras a Proveedores (NUEVO ✨)
+- **Órdenes de Compra:**
+  - Creación de órdenes con selección de proveedor
+  - Carrito de productos con cantidad y precio editable
+  - Cálculo automático: Subtotal, IGV 18%, Total
+  - Numeración correlativa (OC-XXXXXXXX)
+- **Estados de Orden:**
+  - Pendiente: Orden creada, esperando recepción
+  - Recibida: Stock actualizado automáticamente
+  - Cancelada: Orden anulada sin afectar inventario
+- **Actualización Automática de Inventario:**
+  - Al recibir compra: incrementa stock de cada producto
+  - Actualiza precio de compra del producto
+  - Registra movimiento en Kardex automáticamente
+- **Estadísticas:**
+  - Compras del mes
+  - Órdenes pendientes
+  - Total histórico de compras
+
+### 11. UX/UI
 - Diseño mobile-first
 - Responsive 100%
 - Sidebar en desktop
