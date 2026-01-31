@@ -570,6 +570,303 @@ class ERPAPITester:
             for vend in response[:3]:  # Show first 3
                 print(f"     - {vend.get('vendedor', 'N/A')}: {vend.get('total', 0)} ({vend.get('ventas', 0)} ventas)")
 
+    def test_compras_flow(self):
+        """Test purchase orders (compras) complete flow"""
+        print("\n" + "="*50)
+        print("TESTING COMPRAS FLOW")
+        print("="*50)
+        
+        if not self.admin_token:
+            print("❌ Skipping compras tests - no admin token")
+            return
+        
+        # Test get compras stats
+        success, stats = self.run_test(
+            "Get Compras Stats",
+            "GET",
+            "compras/stats/resumen",
+            200,
+            token=self.admin_token,
+            description="Get purchase statistics"
+        )
+        
+        if success:
+            required_fields = ['compras_mes', 'compras_pendientes', 'total_historico']
+            for field in required_fields:
+                if field in stats:
+                    print(f"   ✓ {field}: {stats[field]}")
+                else:
+                    print(f"   ❌ Missing field: {field}")
+        
+        # Test get all compras
+        success, compras = self.run_test(
+            "Get All Compras",
+            "GET",
+            "compras",
+            200,
+            token=self.admin_token,
+            description="List all purchase orders"
+        )
+        
+        # Test get compras with filter
+        success, compras_pendientes = self.run_test(
+            "Get Pending Compras",
+            "GET",
+            "compras?estado=pendiente",
+            200,
+            token=self.admin_token,
+            description="List pending purchase orders"
+        )
+        
+        # Get suppliers and products for creating a purchase order
+        success, suppliers = self.run_test(
+            "Get Suppliers for Compra",
+            "GET",
+            "proveedores",
+            200,
+            token=self.admin_token,
+            description="Get suppliers for purchase order"
+        )
+        
+        success, products = self.run_test(
+            "Get Products for Compra",
+            "GET",
+            "productos",
+            200,
+            token=self.admin_token,
+            description="Get products for purchase order"
+        )
+        
+        if not suppliers or not products:
+            print("❌ No suppliers or products available for compra test")
+            return
+        
+        # Create a purchase order
+        supplier = suppliers[0]
+        product = products[0]
+        
+        compra_data = {
+            "proveedor_id": supplier['id'],
+            "items": [
+                {
+                    "producto_id": product['id'],
+                    "producto_nombre": product['nombre'],
+                    "cantidad": 10,
+                    "precio_unitario": 50.0,
+                    "subtotal": 500.0
+                }
+            ],
+            "fecha_entrega_estimada": "2024-12-31",
+            "observaciones": "Test purchase order via API"
+        }
+        
+        success, response = self.run_test(
+            "Create Purchase Order",
+            "POST",
+            "compras",
+            200,
+            data=compra_data,
+            token=self.admin_token,
+            description="Create new purchase order"
+        )
+        
+        if not success or 'id' not in response:
+            print("❌ Failed to create purchase order")
+            return
+        
+        compra_id = response['id']
+        numero_orden = response.get('numero_orden', 'N/A')
+        print(f"   ✓ Created purchase order: {numero_orden}")
+        
+        # Test get single compra
+        success, compra_detail = self.run_test(
+            "Get Single Compra",
+            "GET",
+            f"compras/{compra_id}",
+            200,
+            token=self.admin_token,
+            description="Get purchase order by ID"
+        )
+        
+        if success:
+            print(f"   ✓ Estado: {compra_detail.get('estado', 'N/A')}")
+            print(f"   ✓ Total: {compra_detail.get('total', 0)}")
+            print(f"   ✓ Items: {len(compra_detail.get('items', []))}")
+        
+        # Get product stock before receiving
+        success, product_before = self.run_test(
+            "Get Product Before Receive",
+            "GET",
+            f"productos/{product['id']}",
+            200,
+            token=self.admin_token,
+            description="Get product stock before receiving"
+        )
+        
+        stock_before = product_before.get('stock', 0) if success else 0
+        print(f"   ✓ Stock before receive: {stock_before}")
+        
+        # Test receive compra (should update stock automatically)
+        success, receive_response = self.run_test(
+            "Receive Purchase Order",
+            "POST",
+            f"compras/{compra_id}/recibir",
+            200,
+            token=self.admin_token,
+            description="Receive purchase order and update stock"
+        )
+        
+        if success:
+            print(f"   ✓ {receive_response.get('message', 'Received')}")
+            print(f"   ✓ Products updated: {receive_response.get('productos_actualizados', 0)}")
+            
+            # Verify stock was updated
+            success, product_after = self.run_test(
+                "Get Product After Receive",
+                "GET",
+                f"productos/{product['id']}",
+                200,
+                token=self.admin_token,
+                description="Verify stock was updated"
+            )
+            
+            if success:
+                stock_after = product_after.get('stock', 0)
+                print(f"   ✓ Stock after receive: {stock_after}")
+                expected_stock = stock_before + 10  # We added 10 units
+                if stock_after == expected_stock:
+                    print(f"   ✅ Stock correctly updated (+10 units)")
+                else:
+                    print(f"   ❌ Stock mismatch. Expected: {expected_stock}, Got: {stock_after}")
+            
+            # Verify Kardex movement was created
+            success, movements = self.run_test(
+                "Get Kardex Movements",
+                "GET",
+                f"inventario/movimientos?producto_id={product['id']}",
+                200,
+                token=self.admin_token,
+                description="Verify Kardex movement was registered"
+            )
+            
+            if success and movements:
+                # Find the movement for this purchase
+                purchase_movement = None
+                for mov in movements:
+                    if mov.get('referencia') == compra_id and mov.get('tipo') == 'entrada':
+                        purchase_movement = mov
+                        break
+                
+                if purchase_movement:
+                    print(f"   ✅ Kardex movement registered:")
+                    print(f"     - Tipo: {purchase_movement.get('tipo')}")
+                    print(f"     - Cantidad: {purchase_movement.get('cantidad')}")
+                    print(f"     - Stock anterior: {purchase_movement.get('stock_anterior')}")
+                    print(f"     - Stock nuevo: {purchase_movement.get('stock_nuevo')}")
+                else:
+                    print(f"   ❌ Kardex movement not found for purchase {compra_id}")
+        
+        # Test try to receive again (should fail)
+        self.run_test(
+            "Try Receive Again (Should Fail)",
+            "POST",
+            f"compras/{compra_id}/recibir",
+            400,
+            token=self.admin_token,
+            description="Should fail - already received"
+        )
+        
+        # Create another purchase order to test cancel
+        compra_data_2 = {
+            "proveedor_id": supplier['id'],
+            "items": [
+                {
+                    "producto_id": product['id'],
+                    "producto_nombre": product['nombre'],
+                    "cantidad": 5,
+                    "precio_unitario": 45.0,
+                    "subtotal": 225.0
+                }
+            ],
+            "observaciones": "Test purchase order for cancel"
+        }
+        
+        success, response_2 = self.run_test(
+            "Create Purchase Order for Cancel",
+            "POST",
+            "compras",
+            200,
+            data=compra_data_2,
+            token=self.admin_token,
+            description="Create purchase order to test cancel"
+        )
+        
+        if success and 'id' in response_2:
+            compra_id_2 = response_2['id']
+            
+            # Test cancel compra
+            success, cancel_response = self.run_test(
+                "Cancel Purchase Order",
+                "POST",
+                f"compras/{compra_id_2}/cancelar",
+                200,
+                token=self.admin_token,
+                description="Cancel purchase order"
+            )
+            
+            if success:
+                print(f"   ✓ {cancel_response.get('message', 'Cancelled')}")
+                
+                # Verify status changed
+                success, cancelled_compra = self.run_test(
+                    "Verify Cancelled Status",
+                    "GET",
+                    f"compras/{compra_id_2}",
+                    200,
+                    token=self.admin_token,
+                    description="Verify order was cancelled"
+                )
+                
+                if success and cancelled_compra.get('estado') == 'cancelada':
+                    print(f"   ✅ Order status correctly changed to 'cancelada'")
+                else:
+                    print(f"   ❌ Order status not updated correctly")
+            
+            # Test delete cancelled order
+            success, delete_response = self.run_test(
+                "Delete Cancelled Order",
+                "DELETE",
+                f"compras/{compra_id_2}",
+                200,
+                token=self.admin_token,
+                description="Delete cancelled purchase order"
+            )
+            
+            if success:
+                print(f"   ✓ {delete_response.get('message', 'Deleted')}")
+        
+        # Test try to delete received order (should fail)
+        self.run_test(
+            "Try Delete Received Order (Should Fail)",
+            "DELETE",
+            f"compras/{compra_id}",
+            400,
+            token=self.admin_token,
+            description="Should fail - cannot delete received order"
+        )
+        
+        # Test vendedor access (should fail for create)
+        if self.vendedor_token:
+            self.run_test(
+                "Vendedor Create Compra (Should Fail)",
+                "POST",
+                "compras",
+                403,
+                data=compra_data,
+                token=self.vendedor_token,
+                description="Vendedor should not be able to create purchase orders"
+            )
+
     def test_reportes_excel_exports(self):
         """Test Excel export endpoints"""
         print("\n" + "="*50)
