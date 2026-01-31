@@ -507,6 +507,116 @@ class ERPAPITester:
                 description="Register inventory exit"
             )
 
+    def test_reportes_apis(self):
+        """Test reports APIs"""
+        print("\n" + "="*50)
+        print("TESTING REPORTES APIS")
+        print("="*50)
+        
+        if not self.admin_token:
+            print("❌ Skipping reportes tests - no admin token")
+            return
+        
+        # Test rentabilidad API
+        success, response = self.run_test(
+            "Get Rentabilidad Report",
+            "GET",
+            "reportes/rentabilidad",
+            200,
+            token=self.admin_token,
+            description="Get profitability analysis"
+        )
+        
+        if success:
+            required_fields = ['productos', 'resumen']
+            for field in required_fields:
+                if field in response:
+                    print(f"   ✓ {field}: Found")
+                    if field == 'resumen':
+                        resumen = response[field]
+                        print(f"     - Total ingresos: {resumen.get('total_ingresos', 0)}")
+                        print(f"     - Total ganancia: {resumen.get('total_ganancia', 0)}")
+                        print(f"     - Margen global: {resumen.get('margen_global', 0)}%")
+                else:
+                    print(f"   ❌ Missing field: {field}")
+        
+        # Test ventas por categoria API
+        success, response = self.run_test(
+            "Get Ventas por Categoria",
+            "GET",
+            "reportes/ventas-por-categoria",
+            200,
+            token=self.admin_token,
+            description="Get sales by category"
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   ✓ Found {len(response)} categories")
+            for cat in response[:3]:  # Show first 3
+                print(f"     - {cat.get('categoria', 'N/A')}: {cat.get('total', 0)}")
+        
+        # Test ventas por vendedor API
+        success, response = self.run_test(
+            "Get Ventas por Vendedor",
+            "GET",
+            "reportes/ventas-por-vendedor",
+            200,
+            token=self.admin_token,
+            description="Get sales by vendor"
+        )
+        
+        if success and isinstance(response, list):
+            print(f"   ✓ Found {len(response)} vendors")
+            for vend in response[:3]:  # Show first 3
+                print(f"     - {vend.get('vendedor', 'N/A')}: {vend.get('total', 0)} ({vend.get('ventas', 0)} ventas)")
+
+    def test_reportes_excel_exports(self):
+        """Test Excel export endpoints"""
+        print("\n" + "="*50)
+        print("TESTING EXCEL EXPORTS")
+        print("="*50)
+        
+        if not self.admin_token:
+            print("❌ Skipping excel export tests - no admin token")
+            return
+        
+        # Test ventas excel export (POST)
+        export_data = {
+            "fecha_inicio": "2024-01-01",
+            "fecha_fin": "2024-12-31",
+            "tipo_comprobante": "all"
+        }
+        
+        success, response = self.run_test(
+            "Export Ventas Excel",
+            "POST",
+            "reportes/ventas/excel",
+            200,
+            data=export_data,
+            token=self.admin_token,
+            description="Export sales to Excel with filters"
+        )
+        
+        # Test inventario excel export (GET)
+        success, response = self.run_test(
+            "Export Inventario Excel",
+            "GET",
+            "reportes/inventario/excel",
+            200,
+            token=self.admin_token,
+            description="Export inventory to Excel"
+        )
+        
+        # Test clientes excel export (GET)
+        success, response = self.run_test(
+            "Export Clientes Excel",
+            "GET",
+            "reportes/clientes/excel",
+            200,
+            token=self.admin_token,
+            description="Export clients to Excel"
+        )
+
     def test_seed_endpoint(self):
         """Test seed data endpoint"""
         print("\n" + "="*50)
