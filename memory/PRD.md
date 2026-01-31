@@ -163,12 +163,14 @@ POST /api/seed                     - Datos iniciales
 - [x] Sistema POS
 - [x] Generación PDF
 - [x] Control de inventario
+- [x] Módulo de Reportes con exportación Excel
+- [x] Análisis de rentabilidad
 
 ### P1 (Siguiente Iteración)
 - [ ] Integración con facturación electrónica real (SUNAT)
-- [ ] Reportes avanzados exportables
 - [ ] Gestión de compras a proveedores
 - [ ] Historial de precios
+- [ ] Notificaciones de stock bajo por email
 
 ### P2 (Futuro)
 - [ ] Multi-sucursal
@@ -176,6 +178,7 @@ POST /api/seed                     - Datos iniciales
 - [ ] Notificaciones push
 - [ ] Integración con pasarelas de pago
 - [ ] App móvil nativa
+- [ ] Módulo de caja chica
 
 ## Notas Técnicas
 - La facturación es SIMULADA para fines internos
