@@ -26,11 +26,13 @@ import {
   ChevronLeft,
   ChevronRight,
   FileSpreadsheet,
+  ShoppingBag,
 } from 'lucide-react';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/ventas', label: 'Nueva Venta', icon: ShoppingCart },
+  { path: '/compras', label: 'Compras', icon: ShoppingBag },
   { path: '/productos', label: 'Productos', icon: Package },
   { path: '/inventario', label: 'Inventario', icon: ClipboardList },
   { path: '/clientes', label: 'Clientes', icon: Users },
