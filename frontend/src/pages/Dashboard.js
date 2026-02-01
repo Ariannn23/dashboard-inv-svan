@@ -1,10 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { dashboardAPI } from '../lib/api';
-import { formatCurrency, formatDateTime } from '../lib/utils';
-import { toast } from 'sonner';
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { dashboardAPI } from "../lib/api";
+import { formatCurrency, formatDateTime } from "../lib/utils";
+import { toast } from "sonner";
 import {
   BarChart,
   Bar,
@@ -16,7 +21,7 @@ import {
   PieChart,
   Pie,
   Cell,
-} from 'recharts';
+} from "recharts";
 import {
   TrendingUp,
   ShoppingCart,
@@ -26,14 +31,22 @@ import {
   DollarSign,
   ArrowRight,
   Loader2,
-} from 'lucide-react';
+} from "lucide-react";
 
-const StatCard = ({ title, value, subtitle, icon: Icon, trend, color = 'teal' }) => {
+const StatCard = ({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
+  trend,
+  color = "teal",
+}) => {
   const colorClasses = {
-    teal: 'bg-teal-50 text-teal-700',
-    emerald: 'bg-emerald-50 text-emerald-700',
-    amber: 'bg-amber-50 text-amber-700',
-    blue: 'bg-blue-50 text-blue-700',
+    teal: "bg-teal-50 text-teal-700",
+    rose: "bg-rose-50 text-rose-700",
+    emerald: "bg-emerald-50 text-emerald-700",
+    amber: "bg-amber-50 text-amber-700",
+    blue: "bg-blue-50 text-blue-700",
   };
 
   return (
@@ -42,10 +55,14 @@ const StatCard = ({ title, value, subtitle, icon: Icon, trend, color = 'teal' })
         <div className="flex items-start justify-between">
           <div className="space-y-1">
             <p className="text-sm text-slate-500">{title}</p>
-            <p className="text-2xl md:text-3xl font-bold text-slate-900">{value}</p>
+            <p className="text-2xl md:text-3xl font-bold text-slate-900">
+              {value}
+            </p>
             {subtitle && <p className="text-xs text-slate-400">{subtitle}</p>}
           </div>
-          <div className={`p-2 md:p-3 rounded-xl ${colorClasses[color]}`}>
+          <div
+            className={`p-2 md:p-3 rounded-xl ${colorClasses[color] || colorClasses.rose}`}
+          >
             <Icon className="h-5 w-5 md:h-6 md:w-6" />
           </div>
         </div>
@@ -60,7 +77,7 @@ const StatCard = ({ title, value, subtitle, icon: Icon, trend, color = 'teal' })
   );
 };
 
-const CHART_COLORS = ['#0F766E', '#10B981', '#F59E0B', '#3B82F6', '#8B5CF6'];
+const CHART_COLORS = ["#E11D48", "#10B981", "#F59E0B", "#3B82F6", "#8B5CF6"];
 
 const Dashboard = () => {
   const [stats, setStats] = useState(null);
@@ -78,13 +95,13 @@ const Dashboard = () => {
           dashboardAPI.getProductosTop(),
           dashboardAPI.getVentasPorPeriodo(7),
         ]);
-        
+
         setStats(statsRes.data);
         setVentasRecientes(ventasRes.data);
         setProductosTop(topRes.data);
         setVentasPeriodo(periodoRes.data);
       } catch (error) {
-        toast.error('Error al cargar datos del dashboard');
+        toast.error("Error al cargar datos del dashboard");
       } finally {
         setLoading(false);
       }
@@ -96,7 +113,7 @@ const Dashboard = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-teal-700" />
+        <Loader2 className="h-8 w-8 animate-spin text-rose-600" />
       </div>
     );
   }
@@ -110,7 +127,7 @@ const Dashboard = () => {
           value={formatCurrency(stats?.ventas_hoy || 0)}
           subtitle={`${stats?.ventas_hoy_count || 0} ventas`}
           icon={DollarSign}
-          color="teal"
+          color="emerald"
         />
         <StatCard
           title="Ventas Mes"
@@ -138,25 +155,40 @@ const Dashboard = () => {
       {/* Quick Actions */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Link to="/ventas">
-          <Button className="w-full h-14 bg-teal-700 hover:bg-teal-800 text-base" data-testid="quick-action-ventas">
+          <Button
+            className="w-full h-14 bg-rose-600 hover:bg-rose-700 text-base"
+            data-testid="quick-action-ventas"
+          >
             <ShoppingCart className="h-5 w-5 mr-2" />
             Nueva Venta
           </Button>
         </Link>
         <Link to="/productos">
-          <Button variant="outline" className="w-full h-14 text-base" data-testid="quick-action-productos">
+          <Button
+            variant="outline"
+            className="w-full h-14 text-base"
+            data-testid="quick-action-productos"
+          >
             <Package className="h-5 w-5 mr-2" />
             Productos
           </Button>
         </Link>
         <Link to="/clientes">
-          <Button variant="outline" className="w-full h-14 text-base" data-testid="quick-action-clientes">
+          <Button
+            variant="outline"
+            className="w-full h-14 text-base"
+            data-testid="quick-action-clientes"
+          >
             <Users className="h-5 w-5 mr-2" />
             Clientes
           </Button>
         </Link>
         <Link to="/inventario">
-          <Button variant="outline" className="w-full h-14 text-base" data-testid="quick-action-inventario">
+          <Button
+            variant="outline"
+            className="w-full h-14 text-base"
+            data-testid="quick-action-inventario"
+          >
             <AlertTriangle className="h-5 w-5 mr-2" />
             Inventario
           </Button>
@@ -168,24 +200,26 @@ const Dashboard = () => {
         {/* Sales Chart */}
         <Card className="border-slate-200">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold">Ventas Últimos 7 Días</CardTitle>
+            <CardTitle className="text-base font-semibold">
+              Ventas Últimos 7 Días
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={ventasPeriodo}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
-                  <XAxis 
-                    dataKey="fecha" 
+                  <XAxis
+                    dataKey="fecha"
                     tick={{ fontSize: 11 }}
                     tickFormatter={(value) => value.slice(5)}
                   />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip 
-                    formatter={(value) => [formatCurrency(value), 'Ventas']}
+                  <Tooltip
+                    formatter={(value) => [formatCurrency(value), "Ventas"]}
                     labelFormatter={(label) => `Fecha: ${label}`}
                   />
-                  <Bar dataKey="total" fill="#0F766E" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="total" fill="#E11D48" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -195,7 +229,9 @@ const Dashboard = () => {
         {/* Top Products Chart */}
         <Card className="border-slate-200">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base font-semibold">Productos Más Vendidos</CardTitle>
+            <CardTitle className="text-base font-semibold">
+              Productos Más Vendidos
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-64">
@@ -209,14 +245,19 @@ const Dashboard = () => {
                       cx="50%"
                       cy="50%"
                       outerRadius={80}
-                      label={({ nombre, percent }) => `${nombre?.substring(0, 10)}... (${(percent * 100).toFixed(0)}%)`}
+                      label={({ nombre, percent }) =>
+                        `${nombre?.substring(0, 10)}... (${(percent * 100).toFixed(0)}%)`
+                      }
                       labelLine={false}
                     >
                       {productosTop.map((_, index) => (
-                        <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={CHART_COLORS[index % CHART_COLORS.length]}
+                        />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value) => [value, 'Unidades']} />
+                    <Tooltip formatter={(value) => [value, "Unidades"]} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
@@ -232,9 +273,16 @@ const Dashboard = () => {
       {/* Recent Sales */}
       <Card className="border-slate-200">
         <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-base font-semibold">Ventas Recientes</CardTitle>
+          <CardTitle className="text-base font-semibold">
+            Ventas Recientes
+          </CardTitle>
           <Link to="/historial-ventas">
-            <Button variant="ghost" size="sm" className="text-teal-700" data-testid="ver-todas-ventas-btn">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-rose-600 hover:text-rose-700 hover:bg-rose-50"
+              data-testid="ver-todas-ventas-btn"
+            >
               Ver todas
               <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
@@ -253,17 +301,24 @@ const Dashboard = () => {
                       {venta.numero_comprobante}
                     </p>
                     <p className="text-xs text-slate-500">
-                      {venta.cliente_nombre || 'Cliente General'} • {formatDateTime(venta.fecha)}
+                      {venta.cliente_nombre || "Cliente General"} •{" "}
+                      {formatDateTime(venta.fecha)}
                     </p>
                   </div>
                   <div className="text-right ml-4">
-                    <p className="font-semibold text-teal-700">{formatCurrency(venta.total)}</p>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      venta.tipo_comprobante === 'boleta' 
-                        ? 'bg-slate-100 text-slate-600' 
-                        : 'bg-blue-100 text-blue-600'
-                    }`}>
-                      {venta.tipo_comprobante === 'boleta' ? 'Boleta' : 'Factura'}
+                    <p className="font-semibold text-emerald-600">
+                      {formatCurrency(venta.total)}
+                    </p>
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded-full ${
+                        venta.tipo_comprobante === "boleta"
+                          ? "bg-slate-100 text-slate-600"
+                          : "bg-blue-100 text-blue-600"
+                      }`}
+                    >
+                      {venta.tipo_comprobante === "boleta"
+                        ? "Boleta"
+                        : "Factura"}
                     </span>
                   </div>
                 </div>
@@ -274,7 +329,7 @@ const Dashboard = () => {
               <ShoppingCart className="h-12 w-12 mx-auto mb-2 opacity-50" />
               <p>No hay ventas registradas</p>
               <Link to="/ventas">
-                <Button variant="link" className="text-teal-700 mt-2">
+                <Button variant="link" className="text-rose-600 mt-2">
                   Realizar primera venta
                 </Button>
               </Link>
@@ -284,15 +339,15 @@ const Dashboard = () => {
       </Card>
 
       {/* Inventory Value */}
-      <Card className="border-slate-200 bg-gradient-to-r from-teal-700 to-emerald-600 text-white">
+      <Card className="border-slate-200 bg-gradient-to-r from-rose-600 to-rose-500 text-white">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-teal-100 text-sm">Valor Total del Inventario</p>
+              <p className="text-rose-50 text-sm">Valor Total del Inventario</p>
               <p className="text-3xl md:text-4xl font-bold mt-1">
                 {formatCurrency(stats?.valor_inventario || 0)}
               </p>
-              <p className="text-teal-100 text-sm mt-2">
+              <p className="text-rose-50 text-sm mt-2">
                 {stats?.total_productos || 0} productos en stock
               </p>
             </div>

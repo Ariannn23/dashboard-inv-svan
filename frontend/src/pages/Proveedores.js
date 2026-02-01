@@ -1,25 +1,25 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { proveedoresAPI } from '../lib/api';
-import { formatDate } from '../lib/utils';
-import { toast } from 'sonner';
-import { Card, CardContent } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
+import React, { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../context/AuthContext";
+import { proveedoresAPI } from "../lib/api";
+import { formatDate } from "../lib/utils";
+import { toast } from "sonner";
+import { Card, CardContent } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '../components/ui/dialog';
+} from "../components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '../components/ui/dropdown-menu';
+} from "../components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,7 +29,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '../components/ui/alert-dialog';
+} from "../components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -37,7 +37,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '../components/ui/table';
+} from "../components/ui/table";
 import {
   Search,
   Plus,
@@ -49,22 +49,22 @@ import {
   Phone,
   Mail,
   User,
-} from 'lucide-react';
+} from "lucide-react";
 
 const initialFormState = {
-  razon_social: '',
-  ruc: '',
-  telefono: '',
-  email: '',
-  direccion: '',
-  contacto: '',
+  razon_social: "",
+  ruc: "",
+  telefono: "",
+  email: "",
+  direccion: "",
+  contacto: "",
 };
 
 const Proveedores = () => {
   const { isAdmin } = useAuth();
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedProveedor, setSelectedProveedor] = useState(null);
@@ -78,7 +78,7 @@ const Proveedores = () => {
       });
       setProveedores(response.data);
     } catch (error) {
-      toast.error('Error al cargar proveedores');
+      toast.error("Error al cargar proveedores");
     } finally {
       setLoading(false);
     }
@@ -94,10 +94,10 @@ const Proveedores = () => {
       setFormData({
         razon_social: proveedor.razon_social,
         ruc: proveedor.ruc,
-        telefono: proveedor.telefono || '',
-        email: proveedor.email || '',
-        direccion: proveedor.direccion || '',
-        contacto: proveedor.contacto || '',
+        telefono: proveedor.telefono || "",
+        email: proveedor.email || "",
+        direccion: proveedor.direccion || "",
+        contacto: proveedor.contacto || "",
       });
       setSelectedProveedor(proveedor);
     } else {
@@ -109,14 +109,14 @@ const Proveedores = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.razon_social || !formData.ruc) {
-      toast.error('Complete los campos requeridos');
+      toast.error("Complete los campos requeridos");
       return;
     }
 
     if (formData.ruc.length !== 11) {
-      toast.error('El RUC debe tener 11 dígitos');
+      toast.error("El RUC debe tener 11 dígitos");
       return;
     }
 
@@ -129,16 +129,16 @@ const Proveedores = () => {
 
       if (selectedProveedor) {
         await proveedoresAPI.update(selectedProveedor.id, data);
-        toast.success('Proveedor actualizado');
+        toast.success("Proveedor actualizado");
       } else {
         await proveedoresAPI.create(data);
-        toast.success('Proveedor creado');
+        toast.success("Proveedor creado");
       }
-      
+
       setDialogOpen(false);
       fetchProveedores();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Error al guardar proveedor');
+      toast.error(error.response?.data?.detail || "Error al guardar proveedor");
     } finally {
       setSubmitting(false);
     }
@@ -146,15 +146,17 @@ const Proveedores = () => {
 
   const handleDelete = async () => {
     if (!selectedProveedor) return;
-    
+
     try {
       await proveedoresAPI.delete(selectedProveedor.id);
-      toast.success('Proveedor eliminado');
+      toast.success("Proveedor eliminado");
       setDeleteDialogOpen(false);
       setSelectedProveedor(null);
       fetchProveedores();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Error al eliminar proveedor');
+      toast.error(
+        error.response?.data?.detail || "Error al eliminar proveedor",
+      );
     }
   };
 
@@ -164,8 +166,12 @@ const Proveedores = () => {
         <Card className="border-slate-200">
           <CardContent className="py-16 text-center">
             <Truck className="h-16 w-16 mx-auto text-slate-300 mb-4" />
-            <h3 className="text-lg font-medium text-slate-600 mb-2">Acceso Restringido</h3>
-            <p className="text-slate-400">Solo los administradores pueden gestionar proveedores</p>
+            <h3 className="text-lg font-medium text-slate-600 mb-2">
+              Acceso Restringido
+            </h3>
+            <p className="text-slate-400">
+              Solo los administradores pueden gestionar proveedores
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -178,9 +184,15 @@ const Proveedores = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Proveedores</h1>
-          <p className="text-sm text-slate-500">{proveedores.length} proveedores registrados</p>
+          <p className="text-sm text-slate-500">
+            {proveedores.length} proveedores registrados
+          </p>
         </div>
-        <Button onClick={() => handleOpenDialog()} className="bg-teal-700 hover:bg-teal-800" data-testid="add-proveedor-btn">
+        <Button
+          onClick={() => handleOpenDialog()}
+          className="bg-rose-600 hover:bg-rose-700"
+          data-testid="add-proveedor-btn"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Nuevo Proveedor
         </Button>
@@ -205,7 +217,7 @@ const Proveedores = () => {
       {/* Table */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-teal-700" />
+          <Loader2 className="h-8 w-8 animate-spin text-rose-600" />
         </div>
       ) : proveedores.length > 0 ? (
         <>
@@ -226,11 +238,13 @@ const Proveedores = () => {
                   <TableRow key={proveedor.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center">
                           <Truck className="h-5 w-5" />
                         </div>
                         <div>
-                          <p className="font-medium text-slate-900">{proveedor.razon_social}</p>
+                          <p className="font-medium text-slate-900">
+                            {proveedor.razon_social}
+                          </p>
                           {proveedor.contacto && (
                             <p className="text-xs text-slate-500 flex items-center gap-1">
                               <User className="h-3 w-3" />
@@ -263,20 +277,28 @@ const Proveedores = () => {
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`proveedor-menu-${proveedor.id}`}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            data-testid={`proveedor-menu-${proveedor.id}`}
+                          >
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleOpenDialog(proveedor)} data-testid={`edit-proveedor-${proveedor.id}`}>
+                          <DropdownMenuItem
+                            onClick={() => handleOpenDialog(proveedor)}
+                            data-testid={`edit-proveedor-${proveedor.id}`}
+                          >
                             <Edit className="h-4 w-4 mr-2" />
                             Editar
                           </DropdownMenuItem>
-                          <DropdownMenuItem 
+                          <DropdownMenuItem
                             onClick={() => {
                               setSelectedProveedor(proveedor);
                               setDeleteDialogOpen(true);
-                            }} 
+                            }}
                             className="text-red-600"
                             data-testid={`delete-proveedor-${proveedor.id}`}
                           >
@@ -299,12 +321,16 @@ const Proveedores = () => {
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center flex-shrink-0">
                         <Truck className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="font-medium text-slate-900">{proveedor.razon_social}</p>
-                        <p className="font-mono text-sm text-slate-500">{proveedor.ruc}</p>
+                        <p className="font-medium text-slate-900">
+                          {proveedor.razon_social}
+                        </p>
+                        <p className="font-mono text-sm text-slate-500">
+                          {proveedor.ruc}
+                        </p>
                       </div>
                     </div>
                     <DropdownMenu>
@@ -314,15 +340,17 @@ const Proveedores = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleOpenDialog(proveedor)}>
+                        <DropdownMenuItem
+                          onClick={() => handleOpenDialog(proveedor)}
+                        >
                           <Edit className="h-4 w-4 mr-2" />
                           Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           onClick={() => {
                             setSelectedProveedor(proveedor);
                             setDeleteDialogOpen(true);
-                          }} 
+                          }}
                           className="text-red-600"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
@@ -354,11 +382,18 @@ const Proveedores = () => {
         <Card className="border-slate-200">
           <CardContent className="py-16 text-center">
             <Truck className="h-16 w-16 mx-auto text-slate-300 mb-4" />
-            <h3 className="text-lg font-medium text-slate-600 mb-2">No hay proveedores</h3>
+            <h3 className="text-lg font-medium text-slate-600 mb-2">
+              No hay proveedores
+            </h3>
             <p className="text-slate-400 mb-4">
-              {search ? 'No se encontraron proveedores' : 'Comience agregando su primer proveedor'}
+              {search
+                ? "No se encontraron proveedores"
+                : "Comience agregando su primer proveedor"}
             </p>
-            <Button onClick={() => handleOpenDialog()} className="bg-teal-700 hover:bg-teal-800">
+            <Button
+              onClick={() => handleOpenDialog()}
+              className="bg-rose-600 hover:bg-rose-700"
+            >
               <Plus className="h-4 w-4 mr-2" />
               Agregar Proveedor
             </Button>
@@ -370,7 +405,9 @@ const Proveedores = () => {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>{selectedProveedor ? 'Editar Proveedor' : 'Nuevo Proveedor'}</DialogTitle>
+            <DialogTitle>
+              {selectedProveedor ? "Editar Proveedor" : "Nuevo Proveedor"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -378,7 +415,9 @@ const Proveedores = () => {
               <Input
                 id="razon_social"
                 value={formData.razon_social}
-                onChange={(e) => setFormData({ ...formData, razon_social: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, razon_social: e.target.value })
+                }
                 placeholder="Distribuidora SAC"
                 data-testid="proveedor-razon-social-input"
               />
@@ -389,7 +428,12 @@ const Proveedores = () => {
               <Input
                 id="ruc"
                 value={formData.ruc}
-                onChange={(e) => setFormData({ ...formData, ruc: e.target.value.replace(/\D/g, '') })}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    ruc: e.target.value.replace(/\D/g, ""),
+                  })
+                }
                 placeholder="20123456789"
                 maxLength={11}
                 data-testid="proveedor-ruc-input"
@@ -401,7 +445,9 @@ const Proveedores = () => {
               <Input
                 id="contacto"
                 value={formData.contacto}
-                onChange={(e) => setFormData({ ...formData, contacto: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, contacto: e.target.value })
+                }
                 placeholder="Juan Pérez"
                 data-testid="proveedor-contacto-input"
               />
@@ -413,7 +459,9 @@ const Proveedores = () => {
                 <Input
                   id="telefono"
                   value={formData.telefono}
-                  onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, telefono: e.target.value })
+                  }
                   placeholder="016543210"
                   data-testid="proveedor-telefono-input"
                 />
@@ -424,7 +472,9 @@ const Proveedores = () => {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   placeholder="correo@proveedor.com"
                   data-testid="proveedor-email-input"
                 />
@@ -436,19 +486,32 @@ const Proveedores = () => {
               <Input
                 id="direccion"
                 value={formData.direccion}
-                onChange={(e) => setFormData({ ...formData, direccion: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, direccion: e.target.value })
+                }
                 placeholder="Av. Industrial 456"
                 data-testid="proveedor-direccion-input"
               />
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
+              >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={submitting} className="bg-teal-700 hover:bg-teal-800" data-testid="save-proveedor-btn">
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                {selectedProveedor ? 'Actualizar' : 'Crear'}
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="bg-rose-600 hover:bg-rose-700"
+                data-testid="save-proveedor-btn"
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                {selectedProveedor ? "Actualizar" : "Crear"}
               </Button>
             </DialogFooter>
           </form>
@@ -461,12 +524,17 @@ const Proveedores = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar proveedor?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará permanentemente al proveedor "{selectedProveedor?.razon_social}".
+              Esta acción eliminará permanentemente al proveedor "
+              {selectedProveedor?.razon_social}".
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700" data-testid="confirm-delete-proveedor-btn">
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700"
+              data-testid="confirm-delete-proveedor-btn"
+            >
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -1,32 +1,37 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback } from "react";
 
 const CartContext = createContext(null);
 
 export const useCart = () => {
   const context = useContext(CartContext);
   if (!context) {
-    throw new Error('useCart must be used within a CartProvider');
+    throw new Error("useCart must be used within a CartProvider");
   }
   return context;
 };
 
 export const CartProvider = ({ children }) => {
   const [items, setItems] = useState([]);
-  const [cliente, setCliente] = useState(null);
-  const [tipoComprobante, setTipoComprobante] = useState('boleta');
+  const [cliente, setCliente] = useState({
+    nombre_razon_social: "",
+    documento: "00000000",
+  });
+  const [tipoComprobante, setTipoComprobante] = useState("boleta");
 
   const addItem = useCallback((producto) => {
     setItems((prev) => {
-      const existingIndex = prev.findIndex((item) => item.producto_id === producto.id);
-      
+      const existingIndex = prev.findIndex(
+        (item) => item.producto_id === producto.id,
+      );
+
       if (existingIndex >= 0) {
         const updated = [...prev];
         const newCantidad = updated[existingIndex].cantidad + 1;
-        
+
         if (newCantidad > producto.stock) {
           return prev;
         }
-        
+
         updated[existingIndex] = {
           ...updated[existingIndex],
           cantidad: newCantidad,
@@ -34,11 +39,11 @@ export const CartProvider = ({ children }) => {
         };
         return updated;
       }
-      
+
       if (producto.stock < 1) {
         return prev;
       }
-      
+
       return [
         ...prev,
         {
@@ -57,31 +62,34 @@ export const CartProvider = ({ children }) => {
     setItems((prev) => prev.filter((item) => item.producto_id !== productoId));
   }, []);
 
-  const updateQuantity = useCallback((productoId, cantidad) => {
-    if (cantidad < 1) {
-      removeItem(productoId);
-      return;
-    }
-    
-    setItems((prev) =>
-      prev.map((item) => {
-        if (item.producto_id === productoId) {
-          const newCantidad = Math.min(cantidad, item.stock_disponible);
-          return {
-            ...item,
-            cantidad: newCantidad,
-            subtotal: newCantidad * item.precio_unitario,
-          };
-        }
-        return item;
-      })
-    );
-  }, [removeItem]);
+  const updateQuantity = useCallback(
+    (productoId, cantidad) => {
+      if (cantidad < 1) {
+        removeItem(productoId);
+        return;
+      }
+
+      setItems((prev) =>
+        prev.map((item) => {
+          if (item.producto_id === productoId) {
+            const newCantidad = Math.min(cantidad, item.stock_disponible);
+            return {
+              ...item,
+              cantidad: newCantidad,
+              subtotal: newCantidad * item.precio_unitario,
+            };
+          }
+          return item;
+        }),
+      );
+    },
+    [removeItem],
+  );
 
   const clearCart = useCallback(() => {
     setItems([]);
-    setCliente(null);
-    setTipoComprobante('boleta');
+    setCliente({ nombre_razon_social: "", documento: "00000000" });
+    setTipoComprobante("boleta");
   }, []);
 
   const subtotal = items.reduce((acc, item) => acc + item.subtotal, 0);
@@ -105,9 +113,5 @@ export const CartProvider = ({ children }) => {
     setTipoComprobante,
   };
 
-  return (
-    <CartContext.Provider value={value}>
-      {children}
-    </CartContext.Provider>
-  );
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };

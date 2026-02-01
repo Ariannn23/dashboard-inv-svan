@@ -1448,78 +1448,144 @@ async def get_ventas_por_vendedor(current_user: dict = Depends(get_current_user)
 # ===================
 @api_router.post("/seed")
 async def seed_data():
-    # Check if data exists
+    # Only create users if they don't exist
     existing_users = await db.users.count_documents({})
-    if existing_users > 0:
-        return {"message": "Los datos ya existen"}
-    
-    # Create admin user
-    admin = {
-        "id": str(uuid.uuid4()),
-        "email": "admin@svan.com",
-        "nombre": "Administrador",
-        "role": "admin",
-        "hashed_password": get_password_hash("admin123"),
-        "is_active": True,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    await db.users.insert_one(admin)
-    
-    # Create vendedor user
-    vendedor = {
-        "id": str(uuid.uuid4()),
-        "email": "vendedor@svan.com",
-        "nombre": "Vendedor",
-        "role": "vendedor",
-        "hashed_password": get_password_hash("vendedor123"),
-        "is_active": True,
-        "created_at": datetime.now(timezone.utc).isoformat()
-    }
-    await db.users.insert_one(vendedor)
+    if existing_users == 0:
+        # Create admin user
+        admin = {
+            "id": str(uuid.uuid4()),
+            "email": "admin@svan.com",
+            "nombre": "Administrador",
+            "role": "admin",
+            "hashed_password": get_password_hash("admin123"),
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.users.insert_one(admin)
+        
+        # Create vendedor user
+        vendedor = {
+            "id": str(uuid.uuid4()),
+            "email": "vendedor@svan.com",
+            "nombre": "Vendedor",
+            "role": "vendedor",
+            "hashed_password": get_password_hash("vendedor123"),
+            "is_active": True,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        }
+        await db.users.insert_one(vendedor)
     
     # Create sample products
     productos = [
+        # PET FOOD
         {"nombre": "Dog Chow Adulto 15kg", "categoria": "Alimento para Animales", "precio_compra": 85.00, "precio_venta": 115.00, "stock": 25, "stock_minimo": 5, "unidad": "bolsa"},
         {"nombre": "Cat Chow Gatitos 8kg", "categoria": "Alimento para Animales", "precio_compra": 65.00, "precio_venta": 89.00, "stock": 18, "stock_minimo": 5, "unidad": "bolsa"},
         {"nombre": "Ricocan Carne 15kg", "categoria": "Alimento para Animales", "precio_compra": 72.00, "precio_venta": 98.00, "stock": 30, "stock_minimo": 8, "unidad": "bolsa"},
         {"nombre": "Mimaskot Adulto 15kg", "categoria": "Alimento para Animales", "precio_compra": 68.00, "precio_venta": 92.00, "stock": 3, "stock_minimo": 5, "unidad": "bolsa"},
         {"nombre": "Whiskas Atún 1.5kg", "categoria": "Alimento para Animales", "precio_compra": 22.00, "precio_venta": 32.00, "stock": 40, "stock_minimo": 10, "unidad": "bolsa"},
+        {"nombre": "Pro Plan Adulto 3kg", "categoria": "Alimento para Animales", "precio_compra": 45.00, "precio_venta": 65.00, "stock": 12, "stock_minimo": 3, "unidad": "bolsa"},
+        {"nombre": "Hills Science Diet 2kg", "categoria": "Alimento para Animales", "precio_compra": 55.00, "precio_venta": 78.00, "stock": 8, "stock_minimo": 2, "unidad": "bolsa"},
+        {"nombre": "Pedigree Cachorro 10kg", "categoria": "Alimento para Animales", "precio_compra": 60.00, "precio_venta": 82.00, "stock": 15, "stock_minimo": 5, "unidad": "bolsa"},
+        {"nombre": "Cambo Adulto Cordero 15kg", "categoria": "Alimento para Animales", "precio_compra": 90.00, "precio_venta": 125.00, "stock": 10, "stock_minimo": 3, "unidad": "bolsa"},
+        {"nombre": "Ricocat Pescado 9kg", "categoria": "Alimento para Animales", "precio_compra": 58.00, "precio_venta": 79.00, "stock": 20, "stock_minimo": 5, "unidad": "bolsa"},
+        # ABARROTES
         {"nombre": "Arroz Costeño 5kg", "categoria": "Abarrotes", "precio_compra": 18.50, "precio_venta": 24.00, "stock": 50, "stock_minimo": 15, "unidad": "bolsa"},
         {"nombre": "Aceite Primor 1L", "categoria": "Abarrotes", "precio_compra": 8.50, "precio_venta": 11.50, "stock": 60, "stock_minimo": 20, "unidad": "botella"},
         {"nombre": "Azúcar Rubia 1kg", "categoria": "Abarrotes", "precio_compra": 3.80, "precio_venta": 5.20, "stock": 80, "stock_minimo": 25, "unidad": "bolsa"},
         {"nombre": "Leche Gloria 400g", "categoria": "Abarrotes", "precio_compra": 3.20, "precio_venta": 4.50, "stock": 100, "stock_minimo": 30, "unidad": "lata"},
-        {"nombre": "Fideos Don Vittorio 500g", "categoria": "Abarrotes", "precio_compra": 2.80, "precio_venta": 4.00, "stock": 2, "stock_minimo": 20, "unidad": "paquete"},
+        {"nombre": "Fideos Don Vittorio 500g", "categoria": "Abarrotes", "precio_compra": 2.80, "precio_venta": 4.00, "stock": 45, "stock_minimo": 20, "unidad": "paquete"},
+        {"nombre": "Atún Florida Trozos", "categoria": "Abarrotes", "precio_compra": 4.50, "precio_venta": 6.50, "stock": 70, "stock_minimo": 15, "unidad": "lata"},
+        {"nombre": "Menestra Lentejas 500g", "categoria": "Abarrotes", "precio_compra": 3.50, "precio_venta": 5.00, "stock": 35, "stock_minimo": 10, "unidad": "bolsa"},
+        {"nombre": "Avena 3 Ositos 300g", "categoria": "Abarrotes", "precio_compra": 2.20, "precio_venta": 3.50, "stock": 40, "stock_minimo": 10, "unidad": "bolsa"},
+        {"nombre": "Chocolate Sol del Cusco", "categoria": "Abarrotes", "precio_compra": 1.50, "precio_venta": 2.50, "stock": 90, "stock_minimo": 20, "unidad": "barra"},
+        {"nombre": "Mermelada Gloria 300g", "categoria": "Abarrotes", "precio_compra": 4.20, "precio_venta": 6.00, "stock": 25, "stock_minimo": 5, "unidad": "frasco"},
+        # LIMPIEZA
+        {"nombre": "Detergente Ariel 1kg", "categoria": "Abarrotes", "precio_compra": 12.00, "precio_venta": 16.50, "stock": 30, "stock_minimo": 8, "unidad": "bolsa"},
+        {"nombre": "Lejía Clorox 1L", "categoria": "Abarrotes", "precio_compra": 3.50, "precio_venta": 5.00, "stock": 40, "stock_minimo": 10, "unidad": "botella"},
+        {"nombre": "Jabón Bolivar Barra", "categoria": "Abarrotes", "precio_compra": 2.50, "precio_venta": 3.80, "stock": 60, "stock_minimo": 15, "unidad": "barra"},
+        {"nombre": "Ayudín Pasta 400g", "categoria": "Abarrotes", "precio_compra": 3.20, "precio_venta": 4.80, "stock": 35, "stock_minimo": 10, "unidad": "pote"},
+        {"nombre": "Suavizante Downy 1L", "categoria": "Abarrotes", "precio_compra": 9.00, "precio_venta": 13.50, "stock": 15, "stock_minimo": 5, "unidad": "botella"},
     ]
     
+    products_added = 0
     for prod in productos:
-        prod["id"] = str(uuid.uuid4())
-        prod["created_at"] = datetime.now(timezone.utc).isoformat()
-        prod["updated_at"] = datetime.now(timezone.utc).isoformat()
-        await db.productos.insert_one(prod)
+        exists = await db.productos.find_one({"nombre": prod["nombre"]})
+        if not exists:
+            prod["id"] = str(uuid.uuid4())
+            prod["created_at"] = datetime.now(timezone.utc).isoformat()
+            prod["updated_at"] = datetime.now(timezone.utc).isoformat()
+            await db.productos.insert_one(prod)
+            products_added += 1
     
     # Create sample clients
     clientes = [
-        {"tipo": "persona", "nombre_razon_social": "Juan Pérez García", "documento": "12345678", "telefono": "999888777"},
+        {"tipo": "persona", "nombre_razon_social": "Juan Pérez García", "documento": "12345678", "telefono": "999888777", "direccion": "Av. Lima 123"},
         {"tipo": "empresa", "nombre_razon_social": "Veterinaria San Roque SAC", "documento": "20512345678", "telefono": "014567890", "direccion": "Av. Los Olivos 456"},
+        {"tipo": "persona", "nombre_razon_social": "María Rodríguez López", "documento": "87654321", "telefono": "987654321", "direccion": "Jr. Puno 789"},
+        {"tipo": "empresa", "nombre_razon_social": "Bodega El Tío Juan", "documento": "20601234567", "telefono": "012345678", "direccion": "Calle Real 101"},
+        {"tipo": "persona", "nombre_razon_social": "Carlos Sánchez Vega", "documento": "11223344", "telefono": "911223344", "direccion": "Av. Arequipa 555"},
+        {"tipo": "empresa", "nombre_razon_social": "Restaurante Sabor Peruano", "documento": "20556677889", "telefono": "013334444", "direccion": "Av. Brasil 2020"},
+        {"tipo": "persona", "nombre_razon_social": "Ana Torres Díaz", "documento": "44332211", "telefono": "944332211", "direccion": "Jr. Cusco 321"},
+        {"tipo": "empresa", "nombre_razon_social": "Farmacia Salud Total", "documento": "20445566771", "telefono": "015556666", "direccion": "Av. Tacna 888"},
+        {"tipo": "persona", "nombre_razon_social": "Luis Mendoza Ruiz", "documento": "55667788", "telefono": "955667788", "direccion": "Calle La Paz 100"},
+        {"tipo": "empresa", "nombre_razon_social": "Librería El Estudiante", "documento": "20334455662", "telefono": "016667777", "direccion": "Av. Universitaria 1500"},
+        {"tipo": "persona", "nombre_razon_social": "Carmen Silva Flores", "documento": "66778899", "telefono": "966778899", "direccion": "Jr. Unión 450"},
+        {"tipo": "empresa", "nombre_razon_social": "Transportes Rápidos SAC", "documento": "20112233445", "telefono": "017778888", "direccion": "Av. Argentina 3000"},
+        {"tipo": "persona", "nombre_razon_social": "Jorge Castillo Ramos", "documento": "77889900", "telefono": "977889900", "direccion": "Av. Salaverry 1200"},
+        {"tipo": "empresa", "nombre_razon_social": "Minimarket Los Amigos", "documento": "20889900113", "telefono": "018889999", "direccion": "Calle Los Pinos 234"},
+        {"tipo": "persona", "nombre_razon_social": "Elena Quispe Mamani", "documento": "88990011", "telefono": "988990011", "direccion": "Av. Venezuela 900"},
+        {"tipo": "empresa", "nombre_razon_social": "Panadería El Trigal", "documento": "20990011224", "telefono": "019990000", "direccion": "Jr. Huallaga 567"},
+        {"tipo": "persona", "nombre_razon_social": "Miguel Angel Romero", "documento": "99001122", "telefono": "999001122", "direccion": "Av. Abancay 400"},
+        {"tipo": "empresa", "nombre_razon_social": "Ferretería El Martillo", "documento": "20101112135", "telefono": "012223333", "direccion": "Av. Colonial 2500"},
+        {"tipo": "persona", "nombre_razon_social": "Rosa Medina Torres", "documento": "00112233", "telefono": "900112233", "direccion": "Jr. Ica 123"},
+        {"tipo": "empresa", "nombre_razon_social": "Grifo El Volante", "documento": "20212223246", "telefono": "014445555", "direccion": "Panamericana Norte Km 25"},
     ]
     
+    clients_added = 0
     for cliente in clientes:
-        cliente["id"] = str(uuid.uuid4())
-        cliente["created_at"] = datetime.now(timezone.utc).isoformat()
-        await db.clientes.insert_one(cliente)
+        exists = await db.clientes.find_one({"documento": cliente["documento"]})
+        if not exists:
+            cliente["id"] = str(uuid.uuid4())
+            cliente["created_at"] = datetime.now(timezone.utc).isoformat()
+            await db.clientes.insert_one(cliente)
+            clients_added += 1
     
     # Create sample proveedor
     proveedores = [
-        {"razon_social": "Distribuidora Purina SAC", "ruc": "20123456789", "telefono": "016543210", "contacto": "Carlos López"},
-        {"razon_social": "Alimentos del Norte EIRL", "ruc": "20987654321", "telefono": "016789012", "contacto": "María Gonzales"},
+        {"razon_social": "Distribuidora Purina SAC", "ruc": "20123456789", "telefono": "016543210", "contacto": "Carlos López", "direccion": "Av. Industrial 123", "email": "ventas@purina.com"},
+        {"razon_social": "Alimentos del Norte EIRL", "ruc": "20987654321", "telefono": "016789012", "contacto": "María Gonzales", "direccion": "Calle Fabril 456", "email": "contacto@alnorte.com"},
+        {"razon_social": "Alicorp SAA", "ruc": "20100055237", "telefono": "013150800", "contacto": "Ventas Corporativas", "direccion": "Av. Argentina 4793", "email": "ventas@alicorp.com.pe"},
+        {"razon_social": "Gloria SA", "ruc": "20100190797", "telefono": "014707170", "contacto": "Distribución Lima", "direccion": "Av. República de Panamá 2461", "email": "pedidos@gloria.com.pe"},
+        {"razon_social": "Procter & Gamble Perú", "ruc": "20100127165", "telefono": "012135000", "contacto": "Ejecutivo de Cuentas", "direccion": "Av. Materiales 2805", "email": "ventas@pg.com"},
+        {"razon_social": "Unilever Andina", "ruc": "20100006295", "telefono": "014118300", "contacto": "Gerente Comercial", "direccion": "Av. Paseo de la República 5895", "email": "contacto.peru@unilever.com"},
+        {"razon_social": "Nestlé Perú", "ruc": "20263322496", "telefono": "012133333", "contacto": "Centro de Distribución", "direccion": "Calle Los Frutales 451", "email": "servicios@nestle.com.pe"},
+        {"razon_social": "Kimberly-Clark Perú", "ruc": "20100152941", "telefono": "016184000", "contacto": "Departamento de Ventas", "direccion": "Av. Paseo de la República 3755", "email": "ventas@kcc.com"},
+        {"razon_social": "Molitalia SA", "ruc": "20100035121", "telefono": "015136262", "contacto": "Pedidos Mayoristas", "direccion": "Av. Venezuela 2850", "email": "pedidos@molitalia.com"},
+        {"razon_social": "Backus y Johnston", "ruc": "20100113610", "telefono": "013113000", "contacto": "Canal Tradicional", "direccion": "Av. Nicolás Ayllón 3986", "email": "atencion@backus.com.pe"},
+        {"razon_social": "San Fernando SA", "ruc": "20100154308", "telefono": "012135300", "contacto": "Ventas Pollo/Cerdo", "direccion": "Av. República de Panamá 4295", "email": "ventas@san-fernando.com.pe"},
+        {"razon_social": "Laive SA", "ruc": "20100095450", "telefono": "016187600", "contacto": "Distribución Lácteos", "direccion": "Av. Nicolás de Piérola 601", "email": "pedidos@laive.com.pe"},
+        {"razon_social": "Costeño Alimentos SAC", "ruc": "20251648906", "telefono": "016164200", "contacto": "Ventas Arroz/Menestras", "direccion": "Av. Santa Anita 240", "email": "ventas@costeno.com.pe"},
+        {"razon_social": "Colgate-Palmolive Perú", "ruc": "20100030595", "telefono": "014115000", "contacto": "Cuidado Personal", "direccion": "Av. Rivera Navarrete 501", "email": "contacto@colgate.com"},
+        {"razon_social": "Clorox Perú SA", "ruc": "20336208641", "telefono": "016144600", "contacto": "Limpieza Hogar", "direccion": "Av. Néstor Gambetta 6555", "email": "ventas@clorox.com"},
+        {"razon_social": "Coca-Cola Servicios Perú", "ruc": "20415932376", "telefono": "080014400", "contacto": "Preventa", "direccion": "Av. República de Panamá 4050", "email": "pedidos@coca-cola.com"},
+        {"razon_social": "PepsiCo Alimentos Perú", "ruc": "20502758117", "telefono": "013170400", "contacto": "Snacks y Bebidas", "direccion": "Av. Francisco Bolognesi 401", "email": "ventas@pepsico.com"},
+        {"razon_social": "Intradevco Industrial", "ruc": "20100030919", "telefono": "012151000", "contacto": "Sapolio/Aval", "direccion": "Av. Producción Nacional 188", "email": "ventas@intradevco.com"},
+        {"razon_social": "Softys Perú", "ruc": "20100132592", "telefono": "013192300", "contacto": "Papel y Pañales", "direccion": "Av. Elmer Faucett 3260", "email": "contacto@softys.com"},
+        {"razon_social": "Mondelez Perú SA", "ruc": "20100049938", "telefono": "016113000", "contacto": "Galletas y Dulces", "direccion": "Av. Venezuela 2470", "email": "ventas@mondelez.com"},
     ]
     
+    providers_added = 0
     for prov in proveedores:
-        prov["id"] = str(uuid.uuid4())
-        prov["created_at"] = datetime.now(timezone.utc).isoformat()
-        await db.proveedores.insert_one(prov)
+        exists = await db.proveedores.find_one({"ruc": prov["ruc"]})
+        if not exists:
+            prov["id"] = str(uuid.uuid4())
+            prov["created_at"] = datetime.now(timezone.utc).isoformat()
+            await db.proveedores.insert_one(prov)
+            providers_added += 1
     
-    return {"message": "Datos iniciales creados exitosamente"}
+    return {
+        "message": f"Datos inyectados exitosamente. Productos: {products_added}, Clientes: {clients_added}, Proveedores: {providers_added}"
+    }
 
 # ===================
 # ROOT

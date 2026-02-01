@@ -1,33 +1,38 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { productosAPI, proveedoresAPI } from '../lib/api';
-import { formatCurrency, cn } from '../lib/utils';
-import { toast } from 'sonner';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Badge } from '../components/ui/badge';
+import React, { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../context/AuthContext";
+import { productosAPI, proveedoresAPI } from "../lib/api";
+import { formatCurrency, cn } from "../lib/utils";
+import { toast } from "sonner";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Badge } from "../components/ui/badge";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from '../components/ui/dialog';
+} from "../components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '../components/ui/select';
+} from "../components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '../components/ui/dropdown-menu';
+} from "../components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,7 +42,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '../components/ui/alert-dialog';
+} from "../components/ui/alert-dialog";
 import {
   Search,
   Plus,
@@ -48,21 +53,30 @@ import {
   AlertTriangle,
   Loader2,
   Filter,
-} from 'lucide-react';
+} from "lucide-react";
 
-const CATEGORIAS = ['Alimento para Animales', 'Abarrotes'];
-const UNIDADES = ['unidad', 'bolsa', 'paquete', 'botella', 'lata', 'caja', 'kg', 'litro'];
+const CATEGORIAS = ["Alimento para Animales", "Abarrotes"];
+const UNIDADES = [
+  "unidad",
+  "bolsa",
+  "paquete",
+  "botella",
+  "lata",
+  "caja",
+  "kg",
+  "litro",
+];
 
 const initialFormState = {
-  nombre: '',
-  categoria: 'Alimento para Animales',
-  precio_compra: '',
-  precio_venta: '',
-  stock: '',
-  stock_minimo: '5',
-  unidad: 'unidad',
-  proveedor_id: '',
-  descripcion: '',
+  nombre: "",
+  categoria: "Alimento para Animales",
+  precio_compra: "",
+  precio_venta: "",
+  stock: "",
+  stock_minimo: "5",
+  unidad: "unidad",
+  proveedor_id: "",
+  descripcion: "",
 };
 
 const ProductCard = ({ producto, onEdit, onDelete, isAdmin }) => {
@@ -74,7 +88,9 @@ const ProductCard = ({ producto, onEdit, onDelete, isAdmin }) => {
         <div className="flex items-start justify-between">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-slate-900 truncate">{producto.nombre}</h3>
+              <h3 className="font-semibold text-slate-900 truncate">
+                {producto.nombre}
+              </h3>
               {stockBajo && (
                 <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
               )}
@@ -83,21 +99,29 @@ const ProductCard = ({ producto, onEdit, onDelete, isAdmin }) => {
               {producto.categoria}
             </Badge>
           </div>
-          
+
           {isAdmin && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`producto-menu-${producto.id}`}>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  data-testid={`producto-menu-${producto.id}`}
+                >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => onEdit(producto)} data-testid={`edit-producto-${producto.id}`}>
+                <DropdownMenuItem
+                  onClick={() => onEdit(producto)}
+                  data-testid={`edit-producto-${producto.id}`}
+                >
                   <Edit className="h-4 w-4 mr-2" />
                   Editar
                 </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => onDelete(producto)} 
+                <DropdownMenuItem
+                  onClick={() => onDelete(producto)}
                   className="text-red-600"
                   data-testid={`delete-producto-${producto.id}`}
                 >
@@ -112,22 +136,34 @@ const ProductCard = ({ producto, onEdit, onDelete, isAdmin }) => {
         <div className="mt-4 grid grid-cols-2 gap-3">
           <div>
             <p className="text-xs text-slate-500">Precio Venta</p>
-            <p className="font-semibold text-teal-700">{formatCurrency(producto.precio_venta)}</p>
+            <p className="font-semibold text-emerald-600">
+              {formatCurrency(producto.precio_venta)}
+            </p>
           </div>
           <div>
             <p className="text-xs text-slate-500">Precio Compra</p>
-            <p className="font-medium text-slate-600">{formatCurrency(producto.precio_compra)}</p>
+            <p className="font-medium text-slate-600">
+              {formatCurrency(producto.precio_compra)}
+            </p>
           </div>
         </div>
 
         <div className="mt-3 flex items-center justify-between">
-          <div className={cn(
-            'px-2 py-1 rounded-lg text-sm font-medium',
-            stockBajo ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'
-          )}>
+          <div
+            className={cn(
+              "px-2 py-1 rounded-lg text-sm font-medium",
+              producto.stock <= 0
+                ? "bg-red-100 text-red-700"
+                : stockBajo
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-emerald-100 text-emerald-700",
+            )}
+          >
             Stock: {producto.stock} {producto.unidad}
           </div>
-          <span className="text-xs text-slate-400">Mín: {producto.stock_minimo}</span>
+          <span className="text-xs text-slate-400">
+            Mín: {producto.stock_minimo}
+          </span>
         </div>
       </CardContent>
     </Card>
@@ -139,8 +175,8 @@ const Productos = () => {
   const [productos, setProductos] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [categoriaFilter, setCategoriaFilter] = useState('');
+  const [search, setSearch] = useState("");
+  const [categoriaFilter, setCategoriaFilter] = useState("");
   const [stockBajoFilter, setStockBajoFilter] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -151,17 +187,20 @@ const Productos = () => {
   const fetchData = useCallback(async () => {
     try {
       const [productosRes, proveedoresRes] = await Promise.all([
-        productosAPI.getAll({ 
-          search: search || undefined, 
-          categoria: categoriaFilter || undefined,
-          stock_bajo: stockBajoFilter || undefined
+        productosAPI.getAll({
+          search: search || undefined,
+          categoria:
+            categoriaFilter && categoriaFilter !== "all"
+              ? categoriaFilter
+              : undefined,
+          stock_bajo: stockBajoFilter || undefined,
         }),
         proveedoresAPI.getAll(),
       ]);
       setProductos(productosRes.data);
       setProveedores(proveedoresRes.data);
     } catch (error) {
-      toast.error('Error al cargar productos');
+      toast.error("Error al cargar productos");
     } finally {
       setLoading(false);
     }
@@ -182,8 +221,8 @@ const Productos = () => {
         stock: producto.stock.toString(),
         stock_minimo: producto.stock_minimo.toString(),
         unidad: producto.unidad,
-        proveedor_id: producto.proveedor_id || '',
-        descripcion: producto.descripcion || '',
+        proveedor_id: producto.proveedor_id || "",
+        descripcion: producto.descripcion || "",
       });
       setSelectedProducto(producto);
     } else {
@@ -195,9 +234,9 @@ const Productos = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.nombre || !formData.precio_compra || !formData.precio_venta) {
-      toast.error('Complete los campos requeridos');
+      toast.error("Complete los campos requeridos");
       return;
     }
 
@@ -214,16 +253,16 @@ const Productos = () => {
 
       if (selectedProducto) {
         await productosAPI.update(selectedProducto.id, data);
-        toast.success('Producto actualizado');
+        toast.success("Producto actualizado");
       } else {
         await productosAPI.create(data);
-        toast.success('Producto creado');
+        toast.success("Producto creado");
       }
-      
+
       setDialogOpen(false);
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Error al guardar producto');
+      toast.error(error.response?.data?.detail || "Error al guardar producto");
     } finally {
       setSubmitting(false);
     }
@@ -231,19 +270,21 @@ const Productos = () => {
 
   const handleDelete = async () => {
     if (!selectedProducto) return;
-    
+
     try {
       await productosAPI.delete(selectedProducto.id);
-      toast.success('Producto eliminado');
+      toast.success("Producto eliminado");
       setDeleteDialogOpen(false);
       setSelectedProducto(null);
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Error al eliminar producto');
+      toast.error(error.response?.data?.detail || "Error al eliminar producto");
     }
   };
 
-  const stockBajoCount = productos.filter(p => p.stock <= p.stock_minimo).length;
+  const stockBajoCount = productos.filter(
+    (p) => p.stock <= p.stock_minimo,
+  ).length;
 
   return (
     <div className="space-y-4 animate-fade-in" data-testid="productos-page">
@@ -251,10 +292,16 @@ const Productos = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Productos</h1>
-          <p className="text-sm text-slate-500">{productos.length} productos registrados</p>
+          <p className="text-sm text-slate-500">
+            {productos.length} productos registrados
+          </p>
         </div>
         {isAdmin() && (
-          <Button onClick={() => handleOpenDialog()} className="bg-teal-700 hover:bg-teal-800" data-testid="add-producto-btn">
+          <Button
+            onClick={() => handleOpenDialog()}
+            className="bg-rose-600 hover:bg-rose-700"
+            data-testid="add-producto-btn"
+          >
             <Plus className="h-4 w-4 mr-2" />
             Nuevo Producto
           </Button>
@@ -276,21 +323,28 @@ const Productos = () => {
               />
             </div>
             <Select value={categoriaFilter} onValueChange={setCategoriaFilter}>
-              <SelectTrigger className="w-full sm:w-48" data-testid="categoria-filter">
+              <SelectTrigger
+                className="w-full sm:w-48"
+                data-testid="categoria-filter"
+              >
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Categoría" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todas las categorías</SelectItem>
                 {CATEGORIAS.map((cat) => (
-                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  <SelectItem key={cat} value={cat}>
+                    {cat}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <Button
-              variant={stockBajoFilter ? 'default' : 'outline'}
+              variant={stockBajoFilter ? "default" : "outline"}
               onClick={() => setStockBajoFilter(!stockBajoFilter)}
-              className={cn(stockBajoFilter && 'bg-amber-500 hover:bg-amber-600')}
+              className={cn(
+                stockBajoFilter && "bg-amber-500 hover:bg-amber-600",
+              )}
               data-testid="stock-bajo-filter-btn"
             >
               <AlertTriangle className="h-4 w-4 mr-2" />
@@ -303,7 +357,7 @@ const Productos = () => {
       {/* Products Grid */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-teal-700" />
+          <Loader2 className="h-8 w-8 animate-spin text-rose-600" />
         </div>
       ) : productos.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -324,12 +378,19 @@ const Productos = () => {
         <Card className="border-slate-200">
           <CardContent className="py-16 text-center">
             <Package className="h-16 w-16 mx-auto text-slate-300 mb-4" />
-            <h3 className="text-lg font-medium text-slate-600 mb-2">No hay productos</h3>
+            <h3 className="text-lg font-medium text-slate-600 mb-2">
+              No hay productos
+            </h3>
             <p className="text-slate-400 mb-4">
-              {search || categoriaFilter ? 'No se encontraron productos con los filtros aplicados' : 'Comience agregando su primer producto'}
+              {search || categoriaFilter
+                ? "No se encontraron productos con los filtros aplicados"
+                : "Comience agregando su primer producto"}
             </p>
             {isAdmin() && !search && !categoriaFilter && (
-              <Button onClick={() => handleOpenDialog()} className="bg-teal-700 hover:bg-teal-800">
+              <Button
+                onClick={() => handleOpenDialog()}
+                className="bg-rose-600 hover:bg-rose-700"
+              >
                 <Plus className="h-4 w-4 mr-2" />
                 Agregar Producto
               </Button>
@@ -342,7 +403,9 @@ const Productos = () => {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedProducto ? 'Editar Producto' : 'Nuevo Producto'}</DialogTitle>
+            <DialogTitle>
+              {selectedProducto ? "Editar Producto" : "Nuevo Producto"}
+            </DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -350,7 +413,9 @@ const Productos = () => {
               <Input
                 id="nombre"
                 value={formData.nombre}
-                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, nombre: e.target.value })
+                }
                 placeholder="Nombre del producto"
                 data-testid="producto-nombre-input"
               />
@@ -359,24 +424,28 @@ const Productos = () => {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Categoría</Label>
-                <Select 
-                  value={formData.categoria} 
-                  onValueChange={(v) => setFormData({ ...formData, categoria: v })}
+                <Select
+                  value={formData.categoria}
+                  onValueChange={(v) =>
+                    setFormData({ ...formData, categoria: v })
+                  }
                 >
                   <SelectTrigger data-testid="producto-categoria-select">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {CATEGORIAS.map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Unidad</Label>
-                <Select 
-                  value={formData.unidad} 
+                <Select
+                  value={formData.unidad}
                   onValueChange={(v) => setFormData({ ...formData, unidad: v })}
                 >
                   <SelectTrigger data-testid="producto-unidad-select">
@@ -384,7 +453,9 @@ const Productos = () => {
                   </SelectTrigger>
                   <SelectContent>
                     {UNIDADES.map((u) => (
-                      <SelectItem key={u} value={u}>{u}</SelectItem>
+                      <SelectItem key={u} value={u}>
+                        {u}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -399,7 +470,9 @@ const Productos = () => {
                   type="number"
                   step="0.01"
                   value={formData.precio_compra}
-                  onChange={(e) => setFormData({ ...formData, precio_compra: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, precio_compra: e.target.value })
+                  }
                   placeholder="0.00"
                   data-testid="producto-precio-compra-input"
                 />
@@ -411,7 +484,9 @@ const Productos = () => {
                   type="number"
                   step="0.01"
                   value={formData.precio_venta}
-                  onChange={(e) => setFormData({ ...formData, precio_venta: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, precio_venta: e.target.value })
+                  }
                   placeholder="0.00"
                   data-testid="producto-precio-venta-input"
                 />
@@ -425,7 +500,9 @@ const Productos = () => {
                   id="stock"
                   type="number"
                   value={formData.stock}
-                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, stock: e.target.value })
+                  }
                   placeholder="0"
                   data-testid="producto-stock-input"
                 />
@@ -436,7 +513,9 @@ const Productos = () => {
                   id="stock_minimo"
                   type="number"
                   value={formData.stock_minimo}
-                  onChange={(e) => setFormData({ ...formData, stock_minimo: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, stock_minimo: e.target.value })
+                  }
                   placeholder="5"
                   data-testid="producto-stock-minimo-input"
                 />
@@ -445,9 +524,11 @@ const Productos = () => {
 
             <div className="space-y-2">
               <Label>Proveedor</Label>
-              <Select 
-                value={formData.proveedor_id} 
-                onValueChange={(v) => setFormData({ ...formData, proveedor_id: v })}
+              <Select
+                value={formData.proveedor_id}
+                onValueChange={(v) =>
+                  setFormData({ ...formData, proveedor_id: v })
+                }
               >
                 <SelectTrigger data-testid="producto-proveedor-select">
                   <SelectValue placeholder="Seleccionar proveedor" />
@@ -455,19 +536,32 @@ const Productos = () => {
                 <SelectContent>
                   <SelectItem value="none">Sin proveedor</SelectItem>
                   {proveedores.map((prov) => (
-                    <SelectItem key={prov.id} value={prov.id}>{prov.razon_social}</SelectItem>
+                    <SelectItem key={prov.id} value={prov.id}>
+                      {prov.razon_social}
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
+              >
                 Cancelar
               </Button>
-              <Button type="submit" disabled={submitting} className="bg-teal-700 hover:bg-teal-800" data-testid="save-producto-btn">
-                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                {selectedProducto ? 'Actualizar' : 'Crear'}
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="bg-rose-600 hover:bg-rose-700"
+                data-testid="save-producto-btn"
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : null}
+                {selectedProducto ? "Actualizar" : "Crear"}
               </Button>
             </DialogFooter>
           </form>
@@ -480,12 +574,17 @@ const Productos = () => {
           <AlertDialogHeader>
             <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará permanentemente el producto "{selectedProducto?.nombre}". Esta acción no se puede deshacer.
+              Esta acción eliminará permanentemente el producto "
+              {selectedProducto?.nombre}". Esta acción no se puede deshacer.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700" data-testid="confirm-delete-producto-btn">
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700"
+              data-testid="confirm-delete-producto-btn"
+            >
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
