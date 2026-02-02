@@ -1,16 +1,16 @@
-# 🏪 Dashboard Inversiones Svan
+#  Dashboard Inversiones Svan
 
 Sistema de gestión de inventario y ventas (ERP) para Inversiones Svan.
 
-## 🚀 Inicio Rápido
+## Inicio Rápido
 
 ### Requisitos Previos
 
-- ✅ Python 3.14.2 (instalado)
-- ✅ Node.js 22.19.0 (instalado)
-- ⚠️ MongoDB (requiere instalación)
+-  Python 3.14.2 (instalado)
+-  Node.js 22.19.0 (instalado)
+-  MongoDB (requiere instalación)
 
-### Configuración Inicial (Ya Completada ✅)
+### Configuración Inicial
 
 ```bash
 # Backend
@@ -80,13 +80,13 @@ O visita: http://localhost:8000/api/seed
 - Admin: `admin@svan.com` / `admin123`
 - Vendedor: `vendedor@svan.com` / `vendedor123`
 
-## 📚 Documentación
+## Documentación
 
 - [**Guía de Configuración Completa**](docs/GETTING_STARTED.md) - Instrucciones detalladas paso a paso
 - [**Manual de Usuario**](docs/USER_GUIDE.md) - Cómo usar el sistema
 - [**Arquitectura**](docs/ARCHITECTURE.md) - Descripción técnica del proyecto
 
-## 🛠️ Stack Tecnológico
+## Stack Tecnológico
 
 ### Backend
 
@@ -103,7 +103,7 @@ O visita: http://localhost:8000/api/seed
 - **Axios** para peticiones HTTP
 - **React Router** para navegación
 
-## 🌐 URLs del Proyecto
+## URLs del Proyecto
 
 Una vez iniciado:
 
@@ -111,7 +111,7 @@ Una vez iniciado:
 - **Backend API**: http://localhost:8000
 - **Documentación API**: http://localhost:8000/docs
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 dashboard-inv-svan/
@@ -132,7 +132,7 @@ dashboard-inv-svan/
 └── README.md            # Este archivo
 ```
 
-## 🔧 Comandos Útiles
+## Comandos Útiles
 
 ### Backend
 
@@ -164,7 +164,7 @@ npm run build
 npm test
 ```
 
-## 🐛 Solución de Problemas
+## Solución de Problemas
 
 ### MongoDB no conecta
 
@@ -196,19 +196,19 @@ rm -rf node_modules package-lock.json
 npm install --legacy-peer-deps
 ```
 
-## 📝 Características Principales
+## Características Principales
 
-- ✅ **Gestión de Inventario** - Control de productos y stock
-- ✅ **Punto de Venta** - Registro de ventas con boletas/facturas
-- ✅ **Gestión de Clientes** - Base de datos de clientes
-- ✅ **Gestión de Proveedores** - Control de proveedores
-- ✅ **Órdenes de Compra** - Gestión de compras a proveedores
-- ✅ **Kardex** - Historial de movimientos de inventario
-- ✅ **Reportes** - Análisis de ventas y estadísticas
-- ✅ **Autenticación** - Sistema de usuarios con roles (Admin/Vendedor)
-- ✅ **Dashboard** - Visualización de métricas clave
+-  **Gestión de Inventario** - Control de productos y stock
+-  **Punto de Venta** - Registro de ventas con boletas/facturas
+-  **Gestión de Clientes** - Base de datos de clientes
+-  **Gestión de Proveedores** - Control de proveedores
+-  **Órdenes de Compra** - Gestión de compras a proveedores
+-  **Kardex** - Historial de movimientos de inventario
+-  **Reportes** - Análisis de ventas y estadísticas
+-  **Autenticación** - Sistema de usuarios con roles (Admin/Vendedor)
+-  **Dashboard** - Visualización de métricas clave
 
-## 👥 Roles de Usuario
+## Roles de Usuario
 
 ### Administrador
 
@@ -225,7 +225,7 @@ npm install --legacy-peer-deps
 - Gestión de clientes
 - Reportes básicos
 
-## 🔐 Seguridad
+## Seguridad
 
 - Autenticación JWT
 - Contraseñas hasheadas con bcrypt
@@ -233,7 +233,7 @@ npm install --legacy-peer-deps
 - CORS configurado
 - Variables de entorno para secretos
 
-## 📄 Licencia
+## Licencia
 
 Este proyecto es privado y pertenece a Inversiones Svan.
 
