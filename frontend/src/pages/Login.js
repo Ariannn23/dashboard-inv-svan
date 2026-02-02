@@ -62,7 +62,7 @@ const Login = () => {
             <span className="text-white text-2xl font-bold">S</span>
           </div>
           <h1 className="text-2xl font-bold text-slate-900">
-            Inversiones Svan
+            {/* Inversiones Svan */}
           </h1>
           <p className="text-slate-500 text-sm">Sistema de Gestión ERP</p>
         </div>
@@ -173,7 +173,7 @@ const Login = () => {
         </Card>
 
         <p className="text-center text-xs text-slate-400 mt-6">
-          © 2024 Inversiones Svan. Todos los derechos reservados.
+          {/* © 2024 Inversiones Svan. Todos los derechos reservados. */}
         </p>
       </div>
     </div>

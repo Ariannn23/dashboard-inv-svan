@@ -128,7 +128,7 @@ const MainLayout = ({ children }) => {
                 ADMINITRACION
               </h1>
               <p className="text-[10px] text-slate-500 font-medium tracking-wide">
-                Inversiones Svan
+                {/* Inversiones Svan */}
               </p>
             </div>
           </div>

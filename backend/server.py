@@ -40,7 +40,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
 # Create the main app
-app = FastAPI(title="Inversiones Svan ERP API")
+app = FastAPI(title="ERP API")  # Inversiones Svan ERP API
 api_router = APIRouter(prefix="/api")
 
 # ===================
@@ -829,7 +829,7 @@ async def get_venta_pdf(venta_id: str, current_user: dict = Depends(get_current_
     elements = []
     
     # Header
-    elements.append(Paragraph("INVERSIONES SVAN", title_style))
+    # elements.append(Paragraph("INVERSIONES SVAN", title_style))
     elements.append(Paragraph("RUC: 20123456789", subtitle_style))
     elements.append(Paragraph("Av. Principal 123, Lima, Perú", subtitle_style))
     elements.append(Spacer(1, 20))
@@ -1592,7 +1592,7 @@ async def seed_data():
 # ===================
 @api_router.get("/")
 async def root():
-    return {"message": "Inversiones Svan ERP API", "version": "1.0.0"}
+    return {"message": "ERP API", "version": "1.0.0"}  # Inversiones Svan ERP API
 
 # Include router
 app.include_router(api_router)

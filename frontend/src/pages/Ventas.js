@@ -175,7 +175,7 @@ const CartContent = ({
   submitting,
 }) => {
   return (
-    <div className="flex flex-col flex-1 min-h-0">
+    <div className="flex flex-col h-full">
       {/* Client Selection */}
       <div className="p-4 border-b border-slate-200 space-y-3">
         <ClienteSelector
@@ -189,7 +189,7 @@ const CartContent = ({
       </div>
 
       {/* Cart Items */}
-      <div className="flex-1 min-h-0 overflow-y-auto p-4">
+      <ScrollArea className="flex-1 p-4">
         {items.length > 0 ? (
           <div className="space-y-3">
             {items.map((item) => (
@@ -208,7 +208,7 @@ const CartContent = ({
             <p className="text-xs">Seleccione productos para agregar</p>
           </div>
         )}
-      </div>
+      </ScrollArea>
 
       {/* Totals & Actions */}
       <div className="p-4 border-t border-slate-200 bg-slate-50 space-y-4">
