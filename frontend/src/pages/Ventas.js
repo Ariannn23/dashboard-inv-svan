@@ -175,7 +175,7 @@ const CartContent = ({
   submitting,
 }) => {
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0">
       {/* Client Selection */}
       <div className="p-4 border-b border-slate-200 space-y-3">
         <ClienteSelector
