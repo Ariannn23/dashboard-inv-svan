@@ -466,36 +466,57 @@ const Ventas = () => {
               )}
             </Button>
           </SheetTrigger>
-          <SheetContent
-  side="right"
-  className="w-full sm:w-96 p-0 h-dvh flex flex-col"
->
-  <SheetHeader className="p-4 border-b border-slate-200 shrink-0">
-    <SheetTitle className="flex items-center gap-2">
-      <ShoppingCart className="h-5 w-5 text-rose-600" />
-      Carrito ({itemCount})
-    </SheetTitle>
-  </SheetHeader>
-
-  <CartContent
-    items={items}
-    cliente={cliente}
-    setCliente={setCliente}
-    clientes={clientes}
-    loadingClientes={loadingClientes}
-    setClienteModalOpen={setClienteModalOpen}
-    tipoComprobante={tipoComprobante}
-    setTipoComprobante={setTipoComprobante}
-    updateQuantity={updateQuantity}
-    removeItem={removeItem}
-    subtotal={subtotal}
-    igv={igv}
-    total={total}
-    clearCart={clearCart}
-    handleFinalizarVenta={handleFinalizarVenta}
-    submitting={submitting}
-  />
-</SheetContent>
+<SheetContent side="right" className="w-full sm:w-96 p-0">
+            <SheetHeader className="p-4 border-b border-slate-200">
+              <SheetTitle className="flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5 text-rose-600" />
+                Carrito ({itemCount})
+              </SheetTitle>
+            </SheetHeader>
+            <CartContent
+              items={items}
+              cliente={cliente}
+              setCliente={setCliente}
+              clientes={clientes}
+              loadingClientes={loadingClientes}
+              setClienteModalOpen={setClienteModalOpen}
+              tipoComprobante={tipoComprobante}
+              setTipoComprobante={setTipoComprobante}
+              updateQuantity={updateQuantity}
+              removeItem={removeItem}
+              subtotal={subtotal}
+              igv={igv}
+              total={total}
+              clearCart={clearCart}
+              handleFinalizarVenta={handleFinalizarVenta}
+              submitting={submitting}
+            />
+          </SheetContent><SheetContent side="right" className="w-full sm:w-96 p-0">
+            <SheetHeader className="p-4 border-b border-slate-200">
+              <SheetTitle className="flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5 text-rose-600" />
+                Carrito ({itemCount})
+              </SheetTitle>
+            </SheetHeader>
+            <CartContent
+              items={items}
+              cliente={cliente}
+              setCliente={setCliente}
+              clientes={clientes}
+              loadingClientes={loadingClientes}
+              setClienteModalOpen={setClienteModalOpen}
+              tipoComprobante={tipoComprobante}
+              setTipoComprobante={setTipoComprobante}
+              updateQuantity={updateQuantity}
+              removeItem={removeItem}
+              subtotal={subtotal}
+              igv={igv}
+              total={total}
+              clearCart={clearCart}
+              handleFinalizarVenta={handleFinalizarVenta}
+              submitting={submitting}
+            />
+          </SheetContent>
         </Sheet>
       </div>
 
