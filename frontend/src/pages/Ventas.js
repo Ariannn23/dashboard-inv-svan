@@ -466,7 +466,10 @@ const Ventas = () => {
               )}
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-full sm:w-96 p-0">
+          <SheetContent
+            side="right"
+            className="w-full sm:w-96 p-0 h-full flex flex-col"
+          >
             <SheetHeader className="p-4 border-b border-slate-200">
               <SheetTitle className="flex items-center gap-2">
                 <ShoppingCart className="h-5 w-5 text-rose-600" />
