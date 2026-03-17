@@ -3,6 +3,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import ReturnDocument
 import os
 import logging
 from pathlib import Path
@@ -594,21 +595,24 @@ async def recibir_compra(compra_id: str, current_user: dict = Depends(require_ad
         {"$set": {"estado": "recibida", "fecha_recepcion": fecha_recepcion}}
     )
     
-    # Actualizar inventario para cada producto
+    # Actualizar inventario para cada producto (Atómico)
     for item in compra.get("items", []):
-        producto = await db.productos.find_one({"id": item["producto_id"]}, {"_id": 0})
-        if producto:
-            nuevo_stock = producto["stock"] + item["cantidad"]
-            
-            # Actualizar stock del producto
-            await db.productos.update_one(
-                {"id": item["producto_id"]},
-                {"$set": {
-                    "stock": nuevo_stock,
-                    "precio_compra": item["precio_unitario"],  # Actualizar precio de compra
+        # Actualizar stock, precio y fecha en una sola operación atómica
+        producto_previo = await db.productos.find_one_and_update(
+            {"id": item["producto_id"]},
+            {
+                "$inc": {"stock": item["cantidad"]},
+                "$set": {
+                    "precio_compra": item["precio_unitario"],
                     "updated_at": datetime.now(timezone.utc).isoformat()
-                }}
-            )
+                }
+            },
+            return_document=ReturnDocument.BEFORE
+        )
+        
+        if producto_previo:
+            stock_anterior = producto_previo["stock"]
+            nuevo_stock = stock_anterior + item["cantidad"]
             
             # Registrar movimiento en Kardex
             mov = Movimiento(
@@ -616,7 +620,7 @@ async def recibir_compra(compra_id: str, current_user: dict = Depends(require_ad
                 producto_nombre=item["producto_nombre"],
                 tipo=TipoMovimiento.ENTRADA,
                 cantidad=item["cantidad"],
-                stock_anterior=producto["stock"],
+                stock_anterior=stock_anterior,
                 stock_nuevo=nuevo_stock,
                 referencia=compra_id,
                 observaciones=f"Compra {compra['numero_orden']} - {compra['proveedor_nombre']}",
@@ -759,22 +763,32 @@ async def create_venta(venta: VentaCreate, current_user: dict = Depends(get_curr
     doc = venta_obj.model_dump()
     doc["fecha"] = doc["fecha"].isoformat()
     
-    # Update stock for each product
+    # Update stock for each product (Atómico)
     for item in items_with_details:
-        producto = await db.productos.find_one({"id": item.producto_id}, {"_id": 0})
-        new_stock = producto["stock"] - item.cantidad
-        await db.productos.update_one(
-            {"id": item.producto_id},
-            {"$set": {"stock": new_stock, "updated_at": datetime.now(timezone.utc).isoformat()}}
+        # Intento de decremento atómico con validación de stock suficiente
+        producto_previo = await db.productos.find_one_and_update(
+            {"id": item.producto_id, "stock": {"$gte": item.cantidad}},
+            {"$inc": {"stock": -item.cantidad}, "$set": {"updated_at": datetime.now(timezone.utc).isoformat()}},
+            return_document=ReturnDocument.BEFORE
         )
+
+        if not producto_previo:
+            # Si retorna None, el producto no existe o no tiene stock suficiente
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Stock insuficiente o producto no encontrado: {item.producto_nombre}"
+            )
         
+        stock_anterior = producto_previo["stock"]
+        new_stock = stock_anterior - item.cantidad
+
         # Register movement
         mov = Movimiento(
             producto_id=item.producto_id,
             producto_nombre=item.producto_nombre,
             tipo=TipoMovimiento.SALIDA,
             cantidad=item.cantidad,
-            stock_anterior=producto["stock"],
+            stock_anterior=stock_anterior,
             stock_nuevo=new_stock,
             referencia=doc["id"],
             observaciones=f"Venta {numero_comprobante}",
