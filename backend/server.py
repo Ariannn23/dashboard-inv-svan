@@ -483,20 +483,20 @@ async def delete_proveedor(proveedor_id: str, current_user: dict = Depends(requi
 # ===================
 # COMPRAS A PROVEEDORES
 # ===================
-async def get_next_orden_number() -> str:
-    """Genera número de orden de compra correlativo"""
-    last_compra = await db.compras.find_one(
-        {},
-        sort=[("numero_orden", -1)]
+async def get_next_sequence(name: str) -> int:
+    """Obtiene el siguiente número de una secuencia atómica"""
+    result = await db.sequences.find_one_and_update(
+        {"_id": name},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=ReturnDocument.AFTER
     )
-    
-    if last_compra:
-        last_num = last_compra.get("numero_orden", "OC-00000000")
-        num_part = int(last_num.split("-")[1]) + 1
-    else:
-        num_part = 1
-    
-    return f"OC-{num_part:08d}"
+    return result["seq"]
+
+async def get_next_orden_number() -> str:
+    """Genera número de orden de compra correlativo atómico"""
+    num = await get_next_sequence("orden_compra")
+    return f"OC-{num:08d}"
 
 @api_router.post("/compras", response_model=dict)
 async def create_compra(compra: CompraCreate, current_user: dict = Depends(require_admin)):
@@ -699,21 +699,12 @@ async def get_compras_stats(current_user: dict = Depends(get_current_user)):
 # VENTAS ENDPOINTS
 # ===================
 async def get_next_comprobante_number(tipo: TipoComprobante) -> str:
+    """Genera número de comprobante correlativo atómico"""
     prefix = "B" if tipo == TipoComprobante.BOLETA else "F"
     serie = "001"
-    
-    last_venta = await db.ventas.find_one(
-        {"tipo_comprobante": tipo},
-        sort=[("numero_comprobante", -1)]
-    )
-    
-    if last_venta:
-        last_num = last_venta.get("numero_comprobante", f"{prefix}{serie}-00000000")
-        num_part = int(last_num.split("-")[1]) + 1
-    else:
-        num_part = 1
-    
-    return f"{prefix}{serie}-{num_part:08d}"
+    key = f"comprobante_{prefix}{serie}"
+    num = await get_next_sequence(key)
+    return f"{prefix}{serie}-{num:08d}"
 
 @api_router.post("/ventas", response_model=dict)
 async def create_venta(venta: VentaCreate, current_user: dict = Depends(get_current_user)):
@@ -1629,6 +1620,24 @@ app.add_middleware(
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+async def init_sequences():
+    """Inicializa los contadores de secuencias si no existen"""
+    sequences = [
+        {"_id": "orden_compra", "seq": 0},
+        {"_id": "comprobante_B001", "seq": 0},
+        {"_id": "comprobante_F001", "seq": 0}
+    ]
+    for seq in sequences:
+        await db.sequences.update_one(
+            {"_id": seq["_id"]},
+            {"$setOnInsert": {"seq": seq["seq"]}},
+            upsert=True
+        )
+
+@app.on_event("startup")
+async def startup_event():
+    await init_sequences()
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
