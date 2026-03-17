@@ -1635,9 +1635,47 @@ async def init_sequences():
             upsert=True
         )
 
+async def create_indexes():
+    """Crea índices en las colecciones de MongoDB para optimizar búsquedas"""
+    try:
+        # Users
+        await db.users.create_index("email", unique=True, background=True)
+        
+        # Productos
+        await db.productos.create_index([("nombre", "text")], background=True)
+        await db.productos.create_index("categoria", background=True)
+        await db.productos.create_index("stock", background=True)
+        
+        # Clientes
+        await db.clientes.create_index("documento", unique=True, background=True)
+        await db.clientes.create_index("nombre_razon_social", background=True)
+        
+        # Proveedores
+        await db.proveedores.create_index("ruc", unique=True, background=True)
+        
+        # Ventas
+        await db.ventas.create_index("fecha", background=True)
+        await db.ventas.create_index("tipo_comprobante", background=True)
+        await db.ventas.create_index("cliente_id", background=True)
+        await db.ventas.create_index("vendedor_id", background=True)
+        
+        # Compras
+        await db.compras.create_index("fecha", background=True)
+        await db.compras.create_index("estado", background=True)
+        await db.compras.create_index("proveedor_id", background=True)
+        
+        # Movimientos
+        await db.movimientos.create_index("producto_id", background=True)
+        await db.movimientos.create_index("fecha", background=True)
+        await db.movimientos.create_index("tipo", background=True)
+        
+    except Exception as e:
+        logger.warning(f"Indexes: {e}")
+
 @app.on_event("startup")
 async def startup_event():
     await init_sequences()
+    await create_indexes()
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
