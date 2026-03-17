@@ -31,7 +31,10 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
 # JWT Configuration
-SECRET_KEY = os.environ.get('SECRET_KEY', 'svan-erp-secret-key-2024-super-secure')
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    raise RuntimeError("La variable de entorno 'SECRET_KEY' no está configurada. Es obligatoria para la seguridad del sistema.")
+
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 
@@ -1448,6 +1451,11 @@ async def get_ventas_por_vendedor(current_user: dict = Depends(get_current_user)
 # ===================
 @api_router.post("/seed")
 async def seed_data():
+    if os.environ.get("ENVIRONMENT") != "development":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Operación no permitida en este entorno. Solo disponible en 'development'."
+        )
     # Only create users if they don't exist
     existing_users = await db.users.count_documents({})
     if existing_users == 0:
