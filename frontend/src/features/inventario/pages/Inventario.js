@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuthStore } from "@/store/authStore";
 import { productosAPI } from "@/features/productos/services/productosAPI";
 import { inventarioAPI } from "../services/inventarioAPI";
 import { formatCurrency, formatDateTime, cn } from "@/lib/utils";
@@ -58,7 +58,7 @@ import {
 } from "lucide-react";
 
 const Inventario = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin } = useAuthStore();
   const [productos, setProductos] = useState([]);
   const [movimientos, setMovimientos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -87,8 +87,8 @@ const Inventario = () => {
           tipo: tipoFilter && tipoFilter !== "all" ? tipoFilter : undefined,
         }),
       ]);
-      setProductos(productosRes.data);
-      setMovimientos(movimientosRes.data);
+      setProductos(productosRes.data.data);
+      setMovimientos(movimientosRes.data.data);
     } catch (error) {
       toast.error("Error al cargar datos");
     } finally {

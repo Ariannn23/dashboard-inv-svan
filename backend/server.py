@@ -468,9 +468,13 @@ async def get_productos(
     categoria: Optional[str] = None,
     search: Optional[str] = None,
     stock_bajo: Optional[bool] = None,
+    page: int = 1,
+    limit: int = 50,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    limit = min(limit, 200)
+    skip = (page - 1) * limit
     q = select(Producto)
     if categoria:
         q = q.where(Producto.categoria == categoria)
@@ -478,10 +482,16 @@ async def get_productos(
         q = q.where(Producto.nombre.ilike(f"%{search}%"))
     if stock_bajo:
         q = q.where(Producto.stock <= Producto.stock_minimo)
-
-    result = await db.execute(q)
-    return [producto_to_dict(p) for p in result.scalars().all()]
-
+    total_result = await db.execute(select(func.count()).select_from(q.subquery()))
+    total = total_result.scalar()
+    result = await db.execute(q.offset(skip).limit(limit))
+    return {
+        "data": [producto_to_dict(p) for p in result.scalars().all()],
+        "total": total,
+        "page": page,
+        "pages": max(1, -(-total // limit)),
+        "limit": limit,
+    }
 
 @api_router.get("/productos/{producto_id}")
 async def get_producto(
@@ -570,6 +580,8 @@ async def delete_producto(
 async def get_clientes(
     search: Optional[str] = None,
     tipo: Optional[str] = None,
+    page: int = 1,
+    limit: int = 50,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -583,8 +595,18 @@ async def get_clientes(
                 Cliente.documento.ilike(f"%{search}%"),
             )
         )
-    result = await db.execute(q)
-    return [cliente_to_dict(c) for c in result.scalars().all()]
+    limit = min(limit, 200)
+    skip = (page - 1) * limit
+    total_result = await db.execute(select(func.count()).select_from(q.subquery()))
+    total = total_result.scalar()
+    result = await db.execute(q.offset(skip).limit(limit))
+    return {
+        "data": [cliente_to_dict(c) for c in result.scalars().all()],
+        "total": total,
+        "page": page,
+        "pages": max(1, -(-total // limit)),
+        "limit": limit,
+    }
 
 
 @api_router.get("/clientes/{cliente_id}")
@@ -662,6 +684,8 @@ async def delete_cliente(
 @api_router.get("/proveedores")
 async def get_proveedores(
     search: Optional[str] = None,
+    page: int = 1,
+limit: int = 50,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -673,8 +697,18 @@ async def get_proveedores(
                 Proveedor.ruc.ilike(f"%{search}%"),
             )
         )
-    result = await db.execute(q)
-    return [proveedor_to_dict(p) for p in result.scalars().all()]
+    limit = min(limit, 200)
+    skip = (page - 1) * limit
+    total_result = await db.execute(select(func.count()).select_from(q.subquery()))
+    total = total_result.scalar()
+    result = await db.execute(q.offset(skip).limit(limit))
+    return {
+        "data": [proveedor_to_dict(p) for p in result.scalars().all()],
+        "total": total,
+        "page": page,
+        "pages": max(1, -(-total // limit)),
+        "limit": limit,
+    }
 
 
 @api_router.get("/proveedores/{proveedor_id}")
@@ -753,52 +787,43 @@ async def create_venta(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    async with db.begin():
-        # Generar número de comprobante dentro de la transacción
+    try:
+        # Generar número de comprobante
         numero_comprobante = await get_next_comprobante_number(venta.tipo_comprobante, db)
 
         subtotal = 0.0
         items_data = []
 
         for item in venta.items:
-            # Descuento atómico de stock: UPDATE ... WHERE stock >= cantidad RETURNING *
-            upd = (
-                update(Producto)
-                .where(
-                    and_(
-                        Producto.id == uuid.UUID(item.producto_id),
-                        Producto.stock >= item.cantidad,
-                    )
-                )
-                .values(
-                    stock=Producto.stock - item.cantidad,
-                    updated_at=datetime.utcnow(),
-                )
-                .returning(Producto)
-            )
-            result = await db.execute(upd)
-            prod_row = result.fetchone()
+            prod_id = uuid.UUID(item.producto_id)
 
-            if not prod_row:
-                # Verificar si el producto existe para dar el mensaje correcto
-                chk = await db.get(Producto, uuid.UUID(item.producto_id))
-                if not chk:
-                    raise HTTPException(status_code=400, detail=f"Producto {item.producto_id} no encontrado")
+            # Obtener el producto actual para verificar stock y nombre
+            prod = await db.get(Producto, prod_id)
+            if not prod:
+                raise HTTPException(status_code=400, detail=f"Producto {item.producto_id} no encontrado")
+            if prod.stock < item.cantidad:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"Stock insuficiente para '{chk.nombre}'. Disponible: {chk.stock}",
+                    detail=f"Stock insuficiente para '{prod.nombre}'. Disponible: {prod.stock}",
                 )
+
+            stock_anterior = prod.stock
+            stock_nuevo = prod.stock - item.cantidad
+
+            # Aplicar descuento de stock directamente en el objeto ORM
+            prod.stock = stock_nuevo
+            prod.updated_at = datetime.utcnow()
 
             item_subtotal = item.cantidad * item.precio_unitario
             subtotal += item_subtotal
             items_data.append({
-                "producto_id": uuid.UUID(item.producto_id),
-                "producto_nombre": prod_row.nombre,
+                "producto_id": prod_id,
+                "producto_nombre": prod.nombre,
                 "cantidad": item.cantidad,
                 "precio_unitario": item.precio_unitario,
                 "subtotal": item_subtotal,
-                "stock_anterior": prod_row.stock + item.cantidad,  # stock antes del descuento
-                "stock_nuevo": prod_row.stock,
+                "stock_anterior": stock_anterior,
+                "stock_nuevo": stock_nuevo,
             })
 
         igv = round(subtotal * 0.18, 2)
@@ -841,6 +866,14 @@ async def create_venta(
             )
             db.add(mov)
 
+        await db.commit()
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al procesar venta: {str(e)}")
+
     return {
         "message": "Venta registrada",
         "id": str(nueva_venta.id),
@@ -853,6 +886,8 @@ async def get_ventas(
     fecha_inicio: Optional[str] = None,
     fecha_fin: Optional[str] = None,
     tipo_comprobante: Optional[str] = None,
+    page: int = 1,
+    limit: int = 50,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -864,8 +899,18 @@ async def get_ventas(
     if fecha_fin:
         q = q.where(Venta.fecha <= datetime.fromisoformat(fecha_fin + "T23:59:59"))
 
-    result = await db.execute(q)
-    return [venta_to_dict(v) for v in result.scalars().all()]
+    limit = min(limit, 200)
+    skip = (page - 1) * limit
+    total_result = await db.execute(select(func.count()).select_from(q.subquery()))
+    total = total_result.scalar()
+    result = await db.execute(q.offset(skip).limit(limit))
+    return {
+        "data": [venta_to_dict() for v in result.scalars().all()],
+        "total": total,
+        "page": page,
+        "pages": max(1, -(-total // limit)),
+        "limit": limit,
+    }
 
 
 @api_router.get("/ventas/{venta_id}")
@@ -1018,6 +1063,8 @@ async def create_compra(
 @api_router.get("/compras")
 async def get_compras(
     estado: Optional[str] = None,
+    page: int = 1,
+    limit: int = 50,
     proveedor_id: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
@@ -1028,8 +1075,18 @@ async def get_compras(
     if proveedor_id:
         q = q.where(Compra.proveedor_id == uuid.UUID(proveedor_id))
 
-    result = await db.execute(q)
-    return [compra_to_dict(c) for c in result.scalars().all()]
+    limit = min(limit, 200)
+    skip = (page - 1) * limit
+    total_result = await db.execute(select(func.count()).select_from(q.subquery()))
+    total = total_result.scalar()
+    result = await db.execute(q.offset(skip).limit(limit))
+    return {
+        "data": [compra_to_dict(c) for c in result.scalars().all()],
+        "total": total,
+        "page": page,
+        "pages": max(1, -(-total // limit)),
+        "limit": limit,
+    }
 
 
 @api_router.get("/compras/stats/resumen")
@@ -1156,6 +1213,8 @@ async def delete_compra(
 async def get_movimientos(
     producto_id: Optional[str] = None,
     tipo: Optional[str] = None,
+    page: int = 1,
+    limit: int = 50,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -1165,8 +1224,18 @@ async def get_movimientos(
     if tipo:
         q = q.where(Movimiento.tipo == tipo)
 
-    result = await db.execute(q)
-    return [movimiento_to_dict(m) for m in result.scalars().all()]
+    limit = min(limit, 200)
+    skip = (page - 1) * limit
+    total_result = await db.execute(select(func.count()).select_from(q.subquery()))
+    total = total_result.scalar()
+    result = await db.execute(q.offset(skip).limit(limit))
+    return {
+        "data": [movimiento_to_dict(m) for m in result.scalars().all()],
+        "total": total,
+        "page": page,
+        "pages": max(1, -(-total // limit)),
+        "limit": limit,
+    }
 
 
 @api_router.post("/inventario/entrada")

@@ -28,7 +28,7 @@ const ClienteFormModal = ({
 }) => {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    nombre_razon_social: "",
+    nombre: "",
     tipo_documento: "DNI",
     documento: "",
     direccion: "",
@@ -75,7 +75,7 @@ const ClienteFormModal = ({
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.nombre_razon_social.trim()) {
+    if (!formData.nombre.trim()) {
       toast.error("El nombre es requerido");
       return;
     }
@@ -90,7 +90,7 @@ const ClienteFormModal = ({
       // Prepare payload matching backend schema
       const payload = {
         tipo: formData.tipo_documento === "RUC" ? "empresa" : "persona",
-        nombre_razon_social: formData.nombre_razon_social,
+        nombre: formData.nombre,
         documento: formData.documento,
         direccion: formData.direccion || null,
         telefono: formData.telefono || null,
@@ -102,7 +102,7 @@ const ClienteFormModal = ({
 
       // Reset form
       setFormData({
-        nombre_razon_social: "",
+        nombre: "",
         tipo_documento: "DNI",
         documento: "",
         direccion: "",
@@ -153,9 +153,9 @@ const ClienteFormModal = ({
             <Label htmlFor="nombre">Nombre / Razón Social *</Label>
             <Input
               id="nombre"
-              value={formData.nombre_razon_social}
+              value={formData.nombre}
               onChange={(e) =>
-                handleChange("nombre_razon_social", e.target.value)
+                handleChange("nombre", e.target.value)
               }
               placeholder="Ingrese nombre o razón social"
               required

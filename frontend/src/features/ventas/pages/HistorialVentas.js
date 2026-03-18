@@ -59,7 +59,7 @@ const HistorialVentas = () => {
         const response = await ventasAPI.getAll({
           tipo_comprobante: tipoFilter || undefined,
         });
-        setVentas(response.data);
+        setVentas(response.data.data);
       } catch (error) {
         toast.error("Error al cargar ventas");
       } finally {

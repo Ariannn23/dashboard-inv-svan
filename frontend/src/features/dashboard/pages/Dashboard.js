@@ -1,11 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { dashboardAPI } from "../services/dashboardAPI";
 import { formatCurrency, formatDateTime } from "@/lib/utils";
@@ -96,10 +91,10 @@ const Dashboard = () => {
           dashboardAPI.getVentasPorPeriodo(7),
         ]);
 
-        setStats(statsRes.data);
-        setVentasRecientes(ventasRes.data);
-        setProductosTop(topRes.data);
-        setVentasPeriodo(periodoRes.data);
+        setStats(statsRes.data.data ?? statsRes.data);
+        setVentasRecientes(ventasRes.data.data ?? ventasRes.data);
+        setProductosTop(topRes.data.data ?? topRes.data);
+        setVentasPeriodo(periodoRes.data.data ?? periodoRes.data);
       } catch (error) {
         toast.error("Error al cargar datos del dashboard");
       } finally {

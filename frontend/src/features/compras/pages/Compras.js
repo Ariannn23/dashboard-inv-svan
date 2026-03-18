@@ -1,16 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/context/AuthContext";
-import { comprasAPI } from "../services/comprasAPI";
+import { useAuthStore } from "@/store/authStore";
+import { comprasAPI } from "@/features/compras/services/comprasAPI";
 import { proveedoresAPI } from "@/features/proveedores/services/proveedoresAPI";
 import { productosAPI } from "@/features/productos/services/productosAPI";
 import { formatCurrency, formatDateTime, cn } from "@/lib/utils";
 import { toast } from "sonner";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,12 +43,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Search,
   Plus,
@@ -92,7 +82,7 @@ const estadoConfig = {
 };
 
 const Compras = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin } = useAuthStore();
   const [compras, setCompras] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [productos, setProductos] = useState([]);
@@ -126,11 +116,20 @@ const Compras = () => {
           productosAPI.getAll(),
           comprasAPI.getStats(),
         ]);
-      setCompras(comprasRes.data);
-      setProveedores(proveedoresRes.data);
-      setProductos(productosRes.data);
-      setStats(statsRes.data);
+
+      console.log("proveedoresRes completo:", proveedoresRes);
+      console.log(
+        "tipo:",
+        typeof proveedoresRes.data,
+        Array.isArray(proveedoresRes.data),
+      );
+
+      setCompras(comprasRes.data.data);
+      setProveedores(proveedoresRes.data.data);
+      setProductos(productosRes.data.data);
+      setStats(statsRes.data.data);
     } catch (error) {
+      console.error("ERROR en fetchData:", error);
       toast.error("Error al cargar datos");
     } finally {
       setLoading(false);
@@ -441,7 +440,7 @@ const Compras = () => {
                           {compra.proveedor_nombre}
                         </p>
                         <p className="text-xs text-slate-500">
-                          RUC: {compra.proveedor_ruc}
+                          Doc: {compra.proveedor_documento || ""}
                         </p>
                       </div>
                     </TableCell>
@@ -530,7 +529,7 @@ const Compras = () => {
                     <SelectContent>
                       {proveedores.map((prov) => (
                         <SelectItem key={prov.id} value={prov.id}>
-                          {prov.razon_social} - {prov.ruc}
+                          {prov.nombre} - {prov.documento}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -701,10 +700,6 @@ const Compras = () => {
                   <span>Subtotal</span>
                   <span>{formatCurrency(subtotal)}</span>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span>IGV (18%)</span>
-                  <span>{formatCurrency(igv)}</span>
-                </div>
                 <div className="flex justify-between text-lg font-bold border-t pt-2">
                   <span>TOTAL</span>
                   <span className="text-emerald-700">
@@ -773,7 +768,7 @@ const Compras = () => {
                     {selectedCompra.proveedor_nombre}
                   </p>
                   <p className="text-sm text-slate-500">
-                    RUC: {selectedCompra.proveedor_ruc}
+                    Doc: {selectedCompra.proveedor_documento || ""}
                   </p>
                   <p className="text-sm text-slate-500">
                     Fecha: {formatDateTime(selectedCompra.fecha)}

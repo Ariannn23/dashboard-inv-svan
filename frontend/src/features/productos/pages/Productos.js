@@ -1,15 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuthStore } from "@/store/authStore";
 import { productosAPI } from "../services/productosAPI";
 import { proveedoresAPI } from "@/features/proveedores/services/proveedoresAPI";
 import { formatCurrency, cn } from "@/lib/utils";
 import { toast } from "sonner";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -172,7 +167,7 @@ const ProductCard = ({ producto, onEdit, onDelete, isAdmin }) => {
 };
 
 const Productos = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin } = useAuthStore();
   const [productos, setProductos] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -198,8 +193,8 @@ const Productos = () => {
         }),
         proveedoresAPI.getAll(),
       ]);
-      setProductos(productosRes.data);
-      setProveedores(proveedoresRes.data);
+      setProductos(productosRes.data.data);
+      setProveedores(proveedoresRes.data.data);
     } catch (error) {
       toast.error("Error al cargar productos");
     } finally {
@@ -221,7 +216,7 @@ const Productos = () => {
         precio_venta: producto.precio_venta.toString(),
         stock: producto.stock.toString(),
         stock_minimo: producto.stock_minimo.toString(),
-        unidad: producto.unidad,
+        unidad: producto.unidad_medida,
         proveedor_id: producto.proveedor_id || "",
         descripcion: producto.descripcion || "",
       });
@@ -538,7 +533,7 @@ const Productos = () => {
                   <SelectItem value="none">Sin proveedor</SelectItem>
                   {proveedores.map((prov) => (
                     <SelectItem key={prov.id} value={prov.id}>
-                      {prov.razon_social}
+                      {prov.nombre}
                     </SelectItem>
                   ))}
                 </SelectContent>

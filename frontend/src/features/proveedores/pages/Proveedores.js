@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuthStore } from "@/store/authStore";
 import { proveedoresAPI } from "../services/proveedoresAPI";
 import { formatDate } from "@/lib/utils";
 import { toast } from "sonner";
@@ -52,7 +52,7 @@ import {
 } from "lucide-react";
 
 const initialFormState = {
-  razon_social: "",
+  nombre: "",
   ruc: "",
   telefono: "",
   email: "",
@@ -61,7 +61,7 @@ const initialFormState = {
 };
 
 const Proveedores = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin } = useAuthStore();
   const [proveedores, setProveedores] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -76,7 +76,7 @@ const Proveedores = () => {
       const response = await proveedoresAPI.getAll({
         search: search || undefined,
       });
-      setProveedores(response.data);
+      setProveedores(response.data.data);
     } catch (error) {
       toast.error("Error al cargar proveedores");
     } finally {
@@ -92,7 +92,7 @@ const Proveedores = () => {
   const handleOpenDialog = (proveedor = null) => {
     if (proveedor) {
       setFormData({
-        razon_social: proveedor.razon_social,
+        nombre: proveedor.nombre,
         ruc: proveedor.ruc,
         telefono: proveedor.telefono || "",
         email: proveedor.email || "",
@@ -110,7 +110,7 @@ const Proveedores = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.razon_social || !formData.ruc) {
+    if (!formData.nombre || !formData.ruc) {
       toast.error("Complete los campos requeridos");
       return;
     }
@@ -243,7 +243,7 @@ const Proveedores = () => {
                         </div>
                         <div>
                           <p className="font-medium text-slate-900">
-                            {proveedor.razon_social}
+                            {proveedor.nombre}
                           </p>
                           {proveedor.contacto && (
                             <p className="text-xs text-slate-500 flex items-center gap-1">
@@ -326,7 +326,7 @@ const Proveedores = () => {
                       </div>
                       <div>
                         <p className="font-medium text-slate-900">
-                          {proveedor.razon_social}
+                          {proveedor.nombre}
                         </p>
                         <p className="font-mono text-sm text-slate-500">
                           {proveedor.ruc}
@@ -411,12 +411,12 @@ const Proveedores = () => {
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="razon_social">Razón Social *</Label>
+              <Label htmlFor="nombre">Razón Social *</Label>
               <Input
-                id="razon_social"
-                value={formData.razon_social}
+                id="nombre"
+                value={formData.nombre}
                 onChange={(e) =>
-                  setFormData({ ...formData, razon_social: e.target.value })
+                  setFormData({ ...formData, nombre: e.target.value })
                 }
                 placeholder="Distribuidora SAC"
                 data-testid="proveedor-razon-social-input"
@@ -525,7 +525,7 @@ const Proveedores = () => {
             <AlertDialogTitle>¿Eliminar proveedor?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta acción eliminará permanentemente al proveedor "
-              {selectedProveedor?.razon_social}".
+              {selectedProveedor?.nombre}".
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

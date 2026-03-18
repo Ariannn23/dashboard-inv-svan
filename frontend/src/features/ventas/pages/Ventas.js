@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { ventasAPI } from "../services/ventasAPI";
 import { productosAPI } from "@/features/productos/services/productosAPI";
 import { clientesAPI } from "@/features/clientes/services/clientesAPI";
-import { useCart } from "@/context/CartContext";
+import { useCartStore } from "@/store/cartStore";
 import { formatCurrency, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
@@ -35,9 +35,7 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
+  DialogClose,
 } from "@/components/ui/dialog";
 import {
   Search,
@@ -304,7 +302,7 @@ const Ventas = () => {
     setCliente,
     tipoComprobante,
     setTipoComprobante,
-  } = useCart();
+  } = useCartStore();
 
   const [productos, setProductos] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -324,7 +322,7 @@ const Ventas = () => {
         search: search || undefined,
         categoria: categoriaFilter || undefined,
       });
-      setProductos(response.data);
+      setProductos(response.data.data);
     } catch (error) {
       toast.error("Error al cargar productos");
     } finally {
@@ -341,7 +339,7 @@ const Ventas = () => {
     setLoadingClientes(true);
     try {
       const response = await clientesAPI.getAll();
-      setClientes(response.data);
+      setClientes(response.data.data);
     } catch (error) {
       toast.error("Error al cargar clientes");
     } finally {
@@ -358,7 +356,7 @@ const Ventas = () => {
     setClientes((prev) => [...prev, nuevoCliente]);
     setCliente({
       id: nuevoCliente.id,
-      nombre_razon_social: nuevoCliente.nombre_razon_social,
+      nombre: nuevoCliente.nombre,
       documento: nuevoCliente.documento,
     });
     toast.success("Cliente seleccionado");
@@ -379,7 +377,7 @@ const Ventas = () => {
     try {
       const ventaData = {
         cliente_id: cliente?.id || null,
-        cliente_nombre: cliente?.nombre_razon_social || "Cliente General",
+        cliente_nombre: cliente?.nombre || "Cliente General",
         cliente_documento: cliente?.documento || "00000000",
         items: items.map((item) => ({
           producto_id: item.producto_id,
@@ -602,46 +600,90 @@ const Ventas = () => {
 
       {/* Success Dialog */}
       <Dialog open={successDialog} onOpenChange={setSuccessDialog}>
-        <DialogContent className="max-w-sm text-center">
-          <DialogHeader>
-            <div className="mx-auto w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-              <Check className="h-8 w-8 text-emerald-600" />
+        <DialogContent className="max-w-sm p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
+          {/* Header verde con icono centrado */}
+          <div className="relative bg-gradient-to-br from-emerald-500 to-emerald-600 px-6 pt-8 pb-10 flex flex-col items-center text-center">
+            {/* Botón cerrar personalizado */}
+            <DialogClose asChild>
+              <button
+                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/20 hover:bg-white/35 transition-colors flex items-center justify-center text-white/80 hover:text-white"
+                aria-label="Cerrar"
+              >
+                <X className="h-4 w-4" strokeWidth={2.5} />
+              </button>
+            </DialogClose>
+            <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mb-4 ring-4 ring-white/30">
+              <Check className="h-10 w-10 text-white" strokeWidth={3} />
             </div>
-            <DialogTitle className="text-xl">¡Venta Exitosa!</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-2 py-4">
-            <p className="text-2xl font-bold text-emerald-700">
-              {formatCurrency(lastVenta?.total || 0)}
-            </p>
-            <p className="text-slate-500">{lastVenta?.numero_comprobante}</p>
-            <Badge
-              className={
-                lastVenta?.tipo_comprobante === "boleta"
-                  ? "bg-slate-100 text-slate-600"
-                  : "bg-blue-100 text-blue-600"
-              }
-            >
-              {lastVenta?.tipo_comprobante === "boleta" ? "Boleta" : "Factura"}
-            </Badge>
+            <h2 className="text-2xl font-bold text-white tracking-tight">¡Venta Exitosa!</h2>
+            <p className="text-emerald-100 text-sm mt-1">Comprobante registrado correctamente</p>
           </div>
-          <DialogFooter className="flex-col sm:flex-col gap-2">
+
+          {/* Cuerpo con detalles */}
+          <div className="-mt-4 bg-white rounded-t-2xl px-6 pt-6 pb-2 space-y-4">
+            {/* Total */}
+            <div className="text-center">
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-widest mb-1">Total Cobrado</p>
+              <p className="text-4xl font-extrabold text-slate-900 tracking-tight">
+                {formatCurrency(lastVenta?.total || 0)}
+              </p>
+            </div>
+
+            {/* Separador */}
+            <div className="border-t border-dashed border-slate-200" />
+
+            {/* Detalles */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500 flex items-center gap-1.5">
+                  <Receipt className="h-3.5 w-3.5" />
+                  Comprobante
+                </span>
+                <span className="font-semibold text-slate-800 font-mono text-xs">
+                  {lastVenta?.numero_comprobante || "—"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-500 flex items-center gap-1.5">
+                  <FileText className="h-3.5 w-3.5" />
+                  Tipo
+                </span>
+                <Badge
+                  className={
+                    lastVenta?.tipo_comprobante === "boleta"
+                      ? "bg-slate-100 text-slate-700 border-slate-200"
+                      : "bg-blue-50 text-blue-700 border-blue-200"
+                  }
+                >
+                  {lastVenta?.tipo_comprobante === "boleta" ? "Boleta" : "Factura"}
+                </Badge>
+              </div>
+            </div>
+
+            {/* Separador */}
+            <div className="border-t border-dashed border-slate-200" />
+          </div>
+
+          {/* Botones */}
+          <div className="bg-white px-6 pb-6 space-y-2.5">
             <Button
               onClick={handleDownloadPDF}
-              className="w-full bg-rose-600 hover:bg-rose-700"
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-11 rounded-xl font-semibold shadow-sm"
               data-testid="download-pdf-btn"
             >
               <FileText className="h-4 w-4 mr-2" />
-              Descargar Comprobante
+              Descargar Comprobante PDF
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => setSuccessDialog(false)}
-              className="w-full"
+              className="w-full h-11 rounded-xl font-semibold border border-slate-200 text-slate-700 bg-white hover:bg-slate-200 hover:text-slate-800"
               data-testid="nueva-venta-btn"
             >
+              <Plus className="h-4 w-4 mr-2" />
               Nueva Venta
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

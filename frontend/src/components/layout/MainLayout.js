@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useAuth } from "@/context/AuthContext";
-import { useCart } from "@/context/CartContext";
+import { useAuthStore } from "@/store/authStore";
+import { useCartStore } from "@/store/cartStore";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -88,8 +88,8 @@ const NavItem = ({ item, isActive, collapsed, onClick }) => {
 };
 
 const MainLayout = ({ children }) => {
-  const { user, logout } = useAuth();
-  const { itemCount } = useCart();
+  const { user, logout } = useAuthStore();
+  const { itemCount } = useCartStore();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

@@ -1,8 +1,9 @@
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
-import { AuthProvider, useAuth } from "@/context/AuthContext";
-import { CartProvider } from "@/context/CartContext";
+import { useAuthStore } from "@/store/authStore";
+import { useEffect } from "react";
+import api from "@/lib/axios";
 
 // Pages
 import Login from "./features/auth/pages/Login";
@@ -21,7 +22,7 @@ import MainLayout from "@/components/layout/MainLayout";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, loading } = useAuthStore();
 
   if (loading) {
     return (
@@ -47,25 +48,23 @@ const AppRoutes = () => {
         path="/*"
         element={
           <ProtectedRoute>
-            <CartProvider>
-              <MainLayout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/productos" element={<Productos />} />
-                  <Route path="/clientes" element={<Clientes />} />
-                  <Route path="/proveedores" element={<Proveedores />} />
-                  <Route path="/ventas" element={<Ventas />} />
-                  <Route
-                    path="/historial-ventas"
-                    element={<HistorialVentas />}
-                  />
-                  <Route path="/inventario" element={<Inventario />} />
-                  <Route path="/reportes" element={<Reportes />} />
-                  <Route path="/compras" element={<Compras />} />
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </MainLayout>
-            </CartProvider>
+            <MainLayout>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/productos" element={<Productos />} />
+                <Route path="/clientes" element={<Clientes />} />
+                <Route path="/proveedores" element={<Proveedores />} />
+                <Route path="/ventas" element={<Ventas />} />
+                <Route
+                  path="/historial-ventas"
+                  element={<HistorialVentas />}
+                />
+                <Route path="/inventario" element={<Inventario />} />
+                <Route path="/reportes" element={<Reportes />} />
+                <Route path="/compras" element={<Compras />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </MainLayout>
           </ProtectedRoute>
         }
       />
@@ -74,13 +73,20 @@ const AppRoutes = () => {
 };
 
 function App() {
+  // P9: Autollenar BD en entorno local
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      api.post("/seed")
+        .then(() => console.log("🌱 Seed ejecutado silenciosamente"))
+        .catch(() => {});
+    }
+  }, []);
+
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-        <Toaster position="top-right" richColors closeButton />
-      </BrowserRouter>
-    </AuthProvider>
+    <BrowserRouter>
+      <AppRoutes />
+      <Toaster position="top-right" richColors closeButton />
+    </BrowserRouter>
   );
 }
 

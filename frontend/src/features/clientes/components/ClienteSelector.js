@@ -36,7 +36,7 @@ const ClienteSelector = ({
   const getCurrentValue = () => {
     if (
       tipoComprobante === "boleta" &&
-      cliente?.nombre_razon_social === "Cliente General"
+      cliente?.nombre === "Cliente General"
     ) {
       return "general";
     }
@@ -46,7 +46,7 @@ const ClienteSelector = ({
   const handleValueChange = (value) => {
     if (value === "general") {
       setCliente({
-        nombre_razon_social: "Cliente General",
+        nombre: "Cliente General",
         documento: "00000000",
         id: null,
       });
@@ -55,7 +55,7 @@ const ClienteSelector = ({
       if (selectedCliente) {
         setCliente({
           id: selectedCliente.id,
-          nombre_razon_social: selectedCliente.nombre_razon_social,
+          nombre: selectedCliente.nombre,
           documento: selectedCliente.documento,
         });
       }
@@ -64,7 +64,7 @@ const ClienteSelector = ({
 
   const isGeneral =
     tipoComprobante === "boleta" &&
-    cliente?.nombre_razon_social === "Cliente General";
+    cliente?.nombre === "Cliente General";
 
   return (
     <>
@@ -87,7 +87,7 @@ const ClienteSelector = ({
                 {filteredClientes.length > 0 ? (
                   filteredClientes.map((c) => (
                     <SelectItem key={c.id} value={c.id.toString()}>
-                      {c.nombre_razon_social} - {c.documento}
+                      {c.nombre} - {c.documento}
                     </SelectItem>
                   ))
                 ) : (

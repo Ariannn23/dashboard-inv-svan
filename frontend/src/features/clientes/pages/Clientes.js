@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useAuthStore } from "@/store/authStore";
 import { clientesAPI } from "../services/clientesAPI";
 import { formatDate, cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -62,7 +62,7 @@ import {
 
 const initialFormState = {
   tipo: "persona",
-  nombre_razon_social: "",
+  nombre: "",
   documento: "",
   telefono: "",
   email: "",
@@ -70,7 +70,7 @@ const initialFormState = {
 };
 
 const Clientes = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin } = useAuthStore();
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -87,7 +87,7 @@ const Clientes = () => {
         search: search || undefined,
         tipo: tipoFilter && tipoFilter !== "all" ? tipoFilter : undefined,
       });
-      setClientes(response.data);
+      setClientes(response.data.data);
     } catch (error) {
       toast.error("Error al cargar clientes");
     } finally {
@@ -104,7 +104,7 @@ const Clientes = () => {
     if (cliente) {
       setFormData({
         tipo: cliente.tipo,
-        nombre_razon_social: cliente.nombre_razon_social,
+        nombre: cliente.nombre,
         documento: cliente.documento,
         telefono: cliente.telefono || "",
         email: cliente.email || "",
@@ -121,7 +121,7 @@ const Clientes = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.nombre_razon_social || !formData.documento) {
+    if (!formData.nombre || !formData.documento) {
       toast.error("Complete los campos requeridos");
       return;
     }
@@ -265,7 +265,7 @@ const Clientes = () => {
                         </div>
                         <div>
                           <p className="font-medium text-slate-900">
-                            {cliente.nombre_razon_social}
+                            {cliente.nombre}
                           </p>
                           <Badge variant="outline" className="text-xs">
                             {cliente.tipo === "persona" ? "Persona" : "Empresa"}
@@ -363,7 +363,7 @@ const Clientes = () => {
                       </div>
                       <div>
                         <p className="font-medium text-slate-900">
-                          {cliente.nombre_razon_social}
+                          {cliente.nombre}
                         </p>
                         <p className="font-mono text-sm text-slate-500">
                           {cliente.documento}
@@ -487,11 +487,11 @@ const Clientes = () => {
               </Label>
               <Input
                 id="nombre"
-                value={formData.nombre_razon_social}
+                value={formData.nombre}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    nombre_razon_social: e.target.value,
+                    nombre: e.target.value,
                   })
                 }
                 placeholder={
@@ -596,7 +596,7 @@ const Clientes = () => {
             <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta acción eliminará permanentemente al cliente "
-              {selectedCliente?.nombre_razon_social}".
+              {selectedCliente?.nombre}".
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
