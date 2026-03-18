@@ -74,8 +74,14 @@ def get_password_hash(password: str) -> str:
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
+    expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire, "type": "access"})
+    return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+def create_refresh_token(data: dict) -> str:
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + timedelta(days=7)
+    to_encode.update({"exp": expire, "type": "refresh"})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 
@@ -147,7 +153,7 @@ class ClienteCreate(BaseModel):
 # Proveedor
 class ProveedorCreate(BaseModel):
     nombre: str
-    documento: Optional[str] = None
+    ruc: Optional[str] = None
     telefono: Optional[str] = None
     email: Optional[str] = None
     direccion: Optional[str] = None
@@ -237,7 +243,7 @@ def proveedor_to_dict(p: Proveedor) -> dict:
     return {
         "id": str(p.id),
         "nombre": p.nombre,
-        "documento": p.documento,
+        "ruc": p.ruc,
         "direccion": p.direccion,
         "telefono": p.telefono,
         "email": p.email,
@@ -391,8 +397,10 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Usuario desactivado")
 
     access_token = create_access_token(data={"sub": str(user.id), "role": user.role})
+    refresh_token = create_refresh_token(data={"sub": str(user.id)})
     return {
         "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer",
         "user": user_to_dict(user),
     }
@@ -401,6 +409,32 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
 @api_router.get("/auth/me")
 async def get_me(current_user: User = Depends(get_current_user)):
     return user_to_dict(current_user)
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+@api_router.post("/auth/refresh")
+async def refresh_token(request: RefreshRequest, db: AsyncSession = Depends(get_db)):
+    exc = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token inválido o expirado")
+    try:
+        payload = jwt.decode(request.refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("type") != "refresh":
+            raise exc
+        user_id = payload.get("sub")
+        if not user_id:
+            raise exc
+    except JWTError:
+        raise exc
+    user = await db.get(User, uuid.UUID(user_id))
+    if not user or not user.is_active:
+        raise exc
+    new_access_token = create_access_token(data={"sub": str(user.id), "role": user.role})
+    new_refresh_token = create_refresh_token(data={"sub": str(user.id)})
+    return {
+        "access_token": new_access_token,
+        "refresh_token": new_refresh_token,
+        "token_type": "bearer",
+    }
 
 
 @api_router.post("/auth/register")
@@ -636,7 +670,7 @@ async def get_proveedores(
         q = q.where(
             or_(
                 Proveedor.nombre.ilike(f"%{search}%"),
-                Proveedor.documento.ilike(f"%{search}%"),
+                Proveedor.ruc.ilike(f"%{search}%"),
             )
         )
     result = await db.execute(q)
@@ -663,7 +697,7 @@ async def create_proveedor(
 ):
     p = Proveedor(
         nombre=proveedor.nombre,
-        documento=proveedor.documento,
+        ruc=proveedor.ruc,
         telefono=proveedor.telefono,
         email=proveedor.email,
         direccion=proveedor.direccion,
@@ -686,7 +720,7 @@ async def update_proveedor(
         raise HTTPException(status_code=404, detail="Proveedor no encontrado")
 
     p.nombre = proveedor.nombre
-    p.documento = proveedor.documento
+    p.ruc = proveedor.ruc
     p.telefono = proveedor.telefono
     p.email = proveedor.email
     p.direccion = proveedor.direccion
@@ -1771,7 +1805,7 @@ async def seed_data(db: AsyncSession = Depends(get_db)):
 
     providers_added = 0
     for p in proveedores_seed:
-        r = await db.execute(select(Proveedor).where(Proveedor.documento == p["documento"]))
+        r = await db.execute(select(Proveedor).where(Proveedor.ruc == p["ruc"]))
         if not r.scalar_one_or_none():
             db.add(Proveedor(**p))
             providers_added += 1
