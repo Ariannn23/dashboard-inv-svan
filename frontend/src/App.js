@@ -1,30 +1,28 @@
-import React, { useEffect } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { Toaster } from "./components/ui/sonner";
-import { AuthProvider, useAuth } from "./context/AuthContext";
-import { CartProvider } from "./context/CartContext";
-import { seedAPI } from "./lib/api";
+import { Toaster } from "@/components/ui/sonner";
+import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { CartProvider } from "@/context/CartContext";
 
 // Pages
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import Productos from "./pages/Productos";
-import Clientes from "./pages/Clientes";
-import Proveedores from "./pages/Proveedores";
-import Ventas from "./pages/Ventas";
-import HistorialVentas from "./pages/HistorialVentas";
-import Inventario from "./pages/Inventario";
-import Reportes from "./pages/Reportes";
-import Compras from "./pages/Compras";
+import Login from "./features/auth/pages/Login";
+import Dashboard from "./features/dashboard/pages/Dashboard";
+import Productos from "./features/productos/pages/Productos";
+import Clientes from "./features/clientes/pages/Clientes";
+import Proveedores from "./features/proveedores/pages/Proveedores";
+import Ventas from "./features/ventas/pages/Ventas";
+import HistorialVentas from "./features/ventas/pages/HistorialVentas";
+import Inventario from "./features/inventario/pages/Inventario";
+import Reportes from "./features/reportes/pages/Reportes";
+import Compras from "./features/compras/pages/Compras";
 
 // Layout
-import MainLayout from "./components/layout/MainLayout";
+import MainLayout from "@/components/layout/MainLayout";
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
-  
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
@@ -32,21 +30,16 @@ const ProtectedRoute = ({ children }) => {
       </div>
     );
   }
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return children;
 };
 
 // App Routes
 const AppRoutes = () => {
-  useEffect(() => {
-    // Seed initial data
-    seedAPI.seed().catch(() => {});
-  }, []);
-
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
@@ -62,7 +55,10 @@ const AppRoutes = () => {
                   <Route path="/clientes" element={<Clientes />} />
                   <Route path="/proveedores" element={<Proveedores />} />
                   <Route path="/ventas" element={<Ventas />} />
-                  <Route path="/historial-ventas" element={<HistorialVentas />} />
+                  <Route
+                    path="/historial-ventas"
+                    element={<HistorialVentas />}
+                  />
                   <Route path="/inventario" element={<Inventario />} />
                   <Route path="/reportes" element={<Reportes />} />
                   <Route path="/compras" element={<Compras />} />

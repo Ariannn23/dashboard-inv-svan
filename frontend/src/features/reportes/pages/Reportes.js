@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { reportesAPI } from "../lib/api";
-import { formatCurrency, cn } from "../lib/utils";
+import { reportesAPI } from "../services/reportesAPI";
+import { formatCurrency, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   Card,
@@ -8,25 +8,25 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-} from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { Badge } from "../components/ui/badge";
-import { Progress } from "../components/ui/progress";
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../components/ui/select";
+} from "@/components/ui/select";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "../components/ui/tabs";
+} from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -34,7 +34,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../components/ui/table";
+} from "@/components/ui/table";
 import {
   BarChart,
   Bar,

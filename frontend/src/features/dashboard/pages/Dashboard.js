@@ -5,10 +5,10 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { dashboardAPI } from "../lib/api";
-import { formatCurrency, formatDateTime } from "../lib/utils";
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { dashboardAPI } from "../services/dashboardAPI";
+import { formatCurrency, formatDateTime } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   BarChart,

@@ -1,42 +1,44 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { productosAPI, ventasAPI, clientesAPI } from "../lib/api";
-import { useCart } from "../context/CartContext";
-import { formatCurrency, cn } from "../lib/utils";
+import { ventasAPI } from "../services/ventasAPI";
+import { productosAPI } from "@/features/productos/services/productosAPI";
+import { clientesAPI } from "@/features/clientes/services/clientesAPI";
+import { useCart } from "@/context/CartContext";
+import { formatCurrency, cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
-} from "../components/ui/card";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
-import { Badge } from "../components/ui/badge";
-import { ScrollArea } from "../components/ui/scroll-area";
-import ClienteFormModal from "../components/ClienteFormModal";
-import ClienteSelector from "../components/ClienteSelector";
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import ClienteFormModal from "@/features/clientes/components/ClienteFormModal";
+import ClienteSelector from "@/features/clientes/components/ClienteSelector";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "../components/ui/sheet";
+} from "@/components/ui/sheet";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../components/ui/select";
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "../components/ui/dialog";
+} from "@/components/ui/dialog";
 import {
   Search,
   ShoppingCart,

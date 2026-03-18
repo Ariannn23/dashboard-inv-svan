@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Label } from "../components/ui/label";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "../components/ui/card";
+} from "@/components/ui/card";
 import { toast } from "sonner";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import { seedAPI } from "../lib/api";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -24,13 +23,10 @@ const Login = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Seed data on first load
-    seedAPI.seed().catch(() => {});
-
     if (isAuthenticated) {
-      navigate("/");
+        navigate("/");
     }
-  }, [isAuthenticated, navigate]);
+}, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
