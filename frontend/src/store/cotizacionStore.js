@@ -8,13 +8,13 @@ const calculateTotals = (items) => {
   return { subtotal, igv, total, itemCount };
 };
 
-export const useCartStore = create((set, get) => ({
+export const useCotizacionStore = create((set, get) => ({
   items: [],
   cliente: {
     nombre: "",
     documento: "00000000",
   },
-  tipoComprobante: "boleta",
+  notas: "",
   subtotal: 0,
   igv: 0,
   total: 0,
@@ -26,8 +26,7 @@ export const useCartStore = create((set, get) => ({
   getItemCount: () => get().itemCount,
 
   setCliente: (cliente) => set({ cliente }),
-  
-  setTipoComprobante: (tipoComprobante) => set({ tipoComprobante }),
+  setNotas: (notas) => set({ notas }),
 
   addItem: (producto) => {
     const items = get().items;
@@ -37,10 +36,6 @@ export const useCartStore = create((set, get) => ({
       const updatedList = [...items];
       const newCantidad = updatedList[existingIndex].cantidad + 1;
 
-      if (newCantidad > producto.stock) {
-        return; // No hay stock
-      }
-
       updatedList[existingIndex] = {
         ...updatedList[existingIndex],
         cantidad: newCantidad,
@@ -48,9 +43,6 @@ export const useCartStore = create((set, get) => ({
       };
       set({ items: updatedList, ...calculateTotals(updatedList) });
     } else {
-      if (producto.stock < 1) {
-        return;
-      }
       const newItems = [
           ...items,
           {
@@ -59,7 +51,6 @@ export const useCartStore = create((set, get) => ({
             cantidad: 1,
             precio_unitario: producto.precio_venta,
             subtotal: producto.precio_venta,
-            stock_disponible: producto.stock,
           },
       ];
       set({
@@ -82,11 +73,10 @@ export const useCartStore = create((set, get) => ({
 
     const newItems = get().items.map((item) => {
         if (item.producto_id === productoId) {
-          const newCantidad = Math.min(cantidad, item.stock_disponible);
           return {
             ...item,
-            cantidad: newCantidad,
-            subtotal: newCantidad * item.precio_unitario,
+            cantidad: cantidad,
+            subtotal: cantidad * item.precio_unitario,
           };
         }
         return item;
@@ -98,10 +88,10 @@ export const useCartStore = create((set, get) => ({
     });
   },
 
-  clearCart: () => set({
+  clearCotizacion: () => set({
     items: [],
     cliente: { nombre: "", documento: "00000000" },
-    tipoComprobante: "boleta",
+    notas: "",
     subtotal: 0,
     igv: 0,
     total: 0,

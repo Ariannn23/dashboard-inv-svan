@@ -13,6 +13,8 @@ import Clientes from "./features/clientes/pages/Clientes";
 import Proveedores from "./features/proveedores/pages/Proveedores";
 import Ventas from "./features/ventas/pages/Ventas";
 import HistorialVentas from "./features/ventas/pages/HistorialVentas";
+import Cotizaciones from "./features/cotizaciones/pages/Cotizaciones";
+import HistorialCotizaciones from "./features/cotizaciones/pages/HistorialCotizaciones";
 import Inventario from "./features/inventario/pages/Inventario";
 import Reportes from "./features/reportes/pages/Reportes";
 import Compras from "./features/compras/pages/Compras";
@@ -58,6 +60,11 @@ const AppRoutes = () => {
                 <Route
                   path="/historial-ventas"
                   element={<HistorialVentas />}
+                />
+                <Route path="/cotizaciones" element={<Cotizaciones />} />
+                <Route
+                  path="/historial-cotizaciones"
+                  element={<HistorialCotizaciones />}
                 />
                 <Route path="/inventario" element={<Inventario />} />
                 <Route path="/reportes" element={<Reportes />} />

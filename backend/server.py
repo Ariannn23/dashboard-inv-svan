@@ -32,7 +32,7 @@ from jose import JWTError, jwt
 # Internos
 from core.config import settings
 from core.database import engine, Base, get_db
-from models import User, Producto, Cliente, Proveedor, Venta, VentaItem, Compra, CompraItem, Movimiento
+from models import User, Producto, Cliente, Proveedor, Venta, VentaItem, Compra, CompraItem, Movimiento, Cotizacion, CotizacionItem
 
 import uvicorn
 
@@ -188,6 +188,17 @@ class MovimientoCreate(BaseModel):
     cantidad: int
     notas: Optional[str] = None
 
+# Cotizacion
+class CotizacionItemSchema(BaseModel):
+    producto_id: str
+    cantidad: int
+    precio_unitario: float
+
+class CotizacionCreate(BaseModel):
+    cliente_id: Optional[str] = None
+    items: List[CotizacionItemSchema]
+    notas: Optional[str] = None
+
 # Reportes
 class ReporteVentasRequest(BaseModel):
     fecha_inicio: Optional[str] = None
@@ -322,6 +333,35 @@ def movimiento_to_dict(m: Movimiento) -> dict:
         "fecha": m.fecha.isoformat() if m.fecha else None,
     }
 
+def cotizacion_item_to_dict(ci: CotizacionItem) -> dict:
+    return {
+        "id": str(ci.id),
+        "producto_id": str(ci.producto_id),
+        "producto_nombre": ci.producto.nombre if ci.producto else None,
+        "cantidad": ci.cantidad,
+        "precio_unitario": float(ci.precio_unitario),
+        "subtotal": float(ci.subtotal),
+    }
+
+def cotizacion_to_dict(c: Cotizacion) -> dict:
+    return {
+        "id": str(c.id),
+        "numero_cotizacion": c.numero_cotizacion,
+        "cliente_id": str(c.cliente_id) if c.cliente_id else None,
+        "cliente_nombre": c.cliente.nombre if c.cliente else None,
+        "usuario_id": str(c.usuario_id),
+        "vendedor_nombre": c.usuario.nombre if c.usuario else None,
+        "venta_id": str(c.venta_id) if c.venta_id else None,
+        "subtotal": float(c.subtotal),
+        "igv": float(c.igv),
+        "total": float(c.total),
+        "estado": c.estado,
+        "fecha": c.fecha.isoformat() if c.fecha else None,
+        "fecha_vencimiento": c.fecha_vencimiento.isoformat() if c.fecha_vencimiento else None,
+        "notas": c.notas,
+        "items": [cotizacion_item_to_dict(i) for i in c.items] if c.items else [],
+    }
+
 
 # =============================================
 # SEQUENCES (PostgreSQL nativas)
@@ -341,6 +381,11 @@ async def get_next_comprobante_number(tipo: str, db: AsyncSession) -> str:
         result = await db.execute(text("SELECT nextval('seq_factura')"))
         num = result.scalar()
         return f"F001-{num:08d}"
+
+async def get_next_cotizacion_number(db: AsyncSession) -> str:
+    result = await db.execute(text("SELECT nextval('seq_cotizacion')"))
+    num = result.scalar()
+    return f"COT-{num:08d}"
 
 
 # =============================================
@@ -905,7 +950,7 @@ async def get_ventas(
     total = total_result.scalar()
     result = await db.execute(q.offset(skip).limit(limit))
     return {
-        "data": [venta_to_dict() for v in result.scalars().all()],
+        "data": [venta_to_dict(v) for v in result.scalars().all()],
         "total": total,
         "page": page,
         "pages": max(1, -(-total // limit)),
@@ -1740,6 +1785,262 @@ async def get_ventas_por_vendedor(
         {"vendedor": row.nombre, "ventas": int(row.ventas), "total": round(float(row.total), 2)}
         for row in result.all()
     ]
+
+
+# =============================================
+# COTIZACIONES
+# =============================================
+
+@api_router.get("/cotizaciones")
+async def list_cotizaciones(
+    page: int = 1,
+    limit: int = 50,
+    search: Optional[str] = None,
+    estado: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    user: dict = Depends(get_current_user),
+):
+    offset = (page - 1) * limit
+    
+    query = select(Cotizacion)
+    
+    if search:
+        query = query.join(Cliente, Cotizacion.cliente_id == Cliente.id, isouter=True).filter(
+            or_(
+                Cotizacion.numero_cotizacion.ilike(f"%{search}%"),
+                Cliente.nombre.ilike(f"%{search}%")
+            )
+        )
+        
+    if estado:
+        query = query.filter(Cotizacion.estado == estado)
+        
+    total_result = await db.execute(select(func.count()).select_from(query.subquery()))
+    total = total_result.scalar() or 0
+    
+    query = query.order_by(Cotizacion.fecha.desc()).offset(offset).limit(limit)
+    result = await db.execute(query)
+    cotizaciones_db = result.unique().scalars().all()
+    
+    return {
+        "data": [cotizacion_to_dict(c) for c in cotizaciones_db],
+        "total": total,
+        "page": page,
+        "pages": max(1, -(-total // limit)),
+        "limit": limit
+    }
+
+@api_router.post("/cotizaciones")
+async def create_cotizacion(
+    cotizacion: CotizacionCreate, 
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    if not cotizacion.items:
+        raise HTTPException(status_code=400, detail="La cotización debe tener al menos un producto")
+        
+    try:
+        subtotal_general = sum(item.cantidad * item.precio_unitario for item in cotizacion.items)
+        igv_general = subtotal_general * 0.18
+        total_general = subtotal_general + igv_general
+        
+        numero = await get_next_cotizacion_number(db)
+        fecha_venc = datetime.now(timezone.utc).date() + timedelta(days=15)
+        
+        nueva_cot = Cotizacion(
+            numero_cotizacion=numero,
+            cliente_id=uuid.UUID(cotizacion.cliente_id) if cotizacion.cliente_id else None,
+            usuario_id=user.id,
+            subtotal=subtotal_general,
+            igv=igv_general,
+            total=total_general,
+            notas=cotizacion.notas,
+            fecha_vencimiento=fecha_venc
+        )
+        db.add(nueva_cot)
+        await db.flush()
+        
+        for item in cotizacion.items:
+            nuevo_item = CotizacionItem(
+                cotizacion_id=nueva_cot.id,
+                producto_id=uuid.UUID(item.producto_id),
+                cantidad=item.cantidad,
+                precio_unitario=item.precio_unitario,
+                subtotal=item.cantidad * item.precio_unitario
+            )
+            db.add(nuevo_item)
+            
+        await db.commit()
+        return {
+            "message": "Cotización registrada",
+            "id": str(nueva_cot.id),
+            "numero_cotizacion": numero
+        }
+        
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/cotizaciones/{id}")
+async def get_cotizacion(id: str, db: AsyncSession = Depends(get_db)):
+    cotizacion = await db.get(Cotizacion, uuid.UUID(id))
+    if not cotizacion:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    return cotizacion_to_dict(cotizacion)
+
+@api_router.post("/cotizaciones/{id}/convertir-venta")
+async def convertir_cotizacion_venta(
+    id: str, 
+    tipo_comprobante: str = "boleta",
+    db: AsyncSession = Depends(get_db), 
+    user: User = Depends(get_current_user)
+):
+    try:
+        cot = await db.get(Cotizacion, uuid.UUID(id))
+        if not cot:
+            raise ValueError("Cotización no encontrada")
+            
+        if cot.estado not in ["borrador", "enviada"]:
+            raise ValueError(f"No se puede convertir una cotización en estado {cot.estado}")
+            
+        subtotal_general = 0.0
+        
+        for item in cot.items:
+            prod = await db.get(Producto, item.producto_id)
+            if not prod:
+                raise ValueError(f"Producto {item.producto_id} no encontrado")
+            if prod.stock < item.cantidad:
+                raise ValueError(f"Stock insuficiente para '{prod.nombre}'")
+                
+            subtotal_item = item.cantidad * item.precio_unitario
+            subtotal_general += subtotal_item
+            
+            prod.stock -= item.cantidad
+            
+            mov = Movimiento(
+                producto_id=prod.id,
+                tipo="salida",
+                cantidad=item.cantidad,
+                stock_anterior=prod.stock + item.cantidad,
+                stock_nuevo=prod.stock,
+                referencia=f"OCOT-{cot.numero_cotizacion}",
+                usuario_id=user.id,
+                notas="Venta por conversión de Cotización"
+            )
+            db.add(mov)
+
+        igv_general = float(subtotal_general) * 0.18
+        total_general = float(subtotal_general) + igv_general
+        
+        numero_comp = await get_next_comprobante_number(tipo_comprobante, db)
+        
+        nueva_venta = Venta(
+            numero_comprobante=numero_comp,
+            tipo_comprobante=tipo_comprobante,
+            cliente_id=cot.cliente_id,
+            usuario_id=user.id,
+            subtotal=subtotal_general,
+            igv=igv_general,
+            total=total_general,
+            estado="completada",
+            notas=f"Generada desde la Cotización {cot.numero_cotizacion}"
+        )
+        db.add(nueva_venta)
+        await db.flush()
+        
+        for item in cot.items:
+            nuevo_vitem = VentaItem(
+                venta_id=nueva_venta.id,
+                producto_id=item.producto_id,
+                cantidad=item.cantidad,
+                precio_unitario=item.precio_unitario,
+                subtotal=item.cantidad * item.precio_unitario
+            )
+            db.add(nuevo_vitem)
+            
+        cot.estado = "aprobada"
+        cot.venta_id = nueva_venta.id
+        
+        await db.commit()
+        return {"message": "Cotización convertida en venta", "venta_id": str(nueva_venta.id)}
+        
+    except ValueError as ve:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@api_router.get("/cotizaciones/{id}/pdf")
+async def generate_cotizacion_pdf(id: str, db: AsyncSession = Depends(get_db)):
+    cotizacion = await db.get(Cotizacion, uuid.UUID(id))
+    if not cotizacion:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    elements = []
+    styles = getSampleStyleSheet()
+    
+    title = Paragraph(f"<b>COTIZACIÓN: {cotizacion.numero_cotizacion}</b>", styles["Title"])
+    elements.append(title)
+    elements.append(Spacer(1, 0.2 * inch))
+    
+    cliente_nombre = cotizacion.cliente.nombre if cotizacion.cliente else "Cliente General"
+    cliente_doc = cotizacion.cliente.documento if cotizacion.cliente and cotizacion.cliente.documento else "N/A"
+    
+    info_data = [
+        ["Cliente:", cliente_nombre, "Fecha:", cotizacion.fecha.strftime("%d/%m/%Y")],
+        ["Documento:", cliente_doc, "Válido hasta:", cotizacion.fecha_vencimiento.strftime("%d/%m/%Y")]
+    ]
+    t = Table(info_data, colWidths=[1*inch, 3*inch, 1*inch, 1*inch])
+    t.setStyle(TableStyle([
+        ('FONTNAME', (0,0), (-1,-1), 'Helvetica'),
+        ('FONTB', (0,0), (0,-1), 'Helvetica-Bold'),
+        ('FONTB', (2,0), (2,-1), 'Helvetica-Bold'),
+        ('ALIGN', (0,0), (-1,-1), 'LEFT'),
+    ]))
+    elements.append(t)
+    elements.append(Spacer(1, 0.3 * inch))
+    
+    item_data = [["Descripción", "Cantidad", "P. Unit", "Subtotal"]]
+    for i in cotizacion.items:
+        prod_name = i.producto.nombre if i.producto else "Prod Desconocido"
+        item_data.append([prod_name, str(i.cantidad), f"S/. {float(i.precio_unitario):.2f}", f"S/. {float(i.subtotal):.2f}"])
+        
+    t_items = Table(item_data, colWidths=[3.5*inch, 1*inch, 1*inch, 1*inch])
+    t_items.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.grey),
+        ('TEXTCOLOR', (0,0), (-1,0), colors.whitesmoke),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('ALIGN', (0,0), (0,-1), 'LEFT'),
+        ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
+        ('BOTTOMPADDING', (0,0), (-1,0), 12),
+        ('GRID', (0,0), (-1,-1), 1, colors.black),
+    ]))
+    elements.append(t_items)
+    elements.append(Spacer(1, 0.2 * inch))
+    
+    total_data = [
+        ["Subtotal:", f"S/. {float(cotizacion.subtotal):.2f}"],
+        ["IGV (18%):", f"S/. {float(cotizacion.igv):.2f}"],
+        ["TOTAL:", f"S/. {float(cotizacion.total):.2f}"]
+    ]
+    t_tot = Table(total_data, colWidths=[5.5*inch, 1*inch])
+    t_tot.setStyle(TableStyle([
+        ('ALIGN', (0,0), (0,-1), 'RIGHT'),
+        ('FONTB', (0,-1), (-1,-1), 'Helvetica-Bold'),
+    ]))
+    elements.append(t_tot)
+    
+    doc.build(elements)
+    buffer.seek(0)
+    
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={cotizacion.numero_cotizacion}.pdf"}
+    )
 
 
 # =============================================

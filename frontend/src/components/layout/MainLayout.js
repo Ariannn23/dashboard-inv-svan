@@ -28,17 +28,21 @@ import {
   FileSpreadsheet,
   ShoppingBag,
   Wheat,
+  FilePlus,
+  Archive,
 } from "lucide-react";
 
 const navItems = [
   { path: "/", label: "Dashboard", icon: LayoutDashboard },
   { path: "/ventas", label: "Nueva Venta", icon: ShoppingCart },
+  { path: "/cotizaciones", label: "Nueva Cotización", icon: FilePlus },
   { path: "/compras", label: "Compras", icon: ShoppingBag },
   { path: "/productos", label: "Productos", icon: Package },
   { path: "/inventario", label: "Inventario", icon: ClipboardList },
   { path: "/clientes", label: "Clientes", icon: Users },
   { path: "/proveedores", label: "Proveedores", icon: Truck },
-  { path: "/historial-ventas", label: "Historial", icon: History },
+  { path: "/historial-ventas", label: "Historial Ventas", icon: History },
+  { path: "/historial-cotizaciones", label: "Historial Cotizaciones", icon: Archive },
   { path: "/reportes", label: "Reportes", icon: FileSpreadsheet },
 ];
 

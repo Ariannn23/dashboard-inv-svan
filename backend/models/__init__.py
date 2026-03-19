@@ -5,6 +5,7 @@ from .proveedor import Proveedor
 from .venta import Venta, VentaItem
 from .compra import Compra, CompraItem
 from .movimiento import Movimiento
+from .cotizacion import Cotizacion, CotizacionItem
 
 __all__ = [
     "User",
@@ -16,4 +17,6 @@ __all__ = [
     "Compra",
     "CompraItem",
     "Movimiento",
+    "Cotizacion",
+    "CotizacionItem",
 ]
