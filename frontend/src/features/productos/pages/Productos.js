@@ -42,13 +42,17 @@ import {
 import {
   Search,
   Plus,
-  MoreVertical,
   Edit,
   Trash2,
+  Eye,
+  Ban,
   Package,
   AlertTriangle,
   Loader2,
   Filter,
+  ChevronLeft,
+  ChevronRight,
+  TextIcon,
 } from "lucide-react";
 
 const CATEGORIAS = ["Alimento para Animales", "Abarrotes"];
@@ -75,7 +79,7 @@ const initialFormState = {
   descripcion: "",
 };
 
-const ProductCard = ({ producto, onEdit, onDelete, isAdmin }) => {
+const ProductCard = ({ producto, onEdit, onDelete, onView, isAdmin }) => {
   const stockBajo = producto.stock <= producto.stock_minimo;
 
   return (
@@ -97,35 +101,28 @@ const ProductCard = ({ producto, onEdit, onDelete, isAdmin }) => {
           </div>
 
           {isAdmin && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  data-testid={`producto-menu-${producto.id}`}
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => onEdit(producto)}
-                  data-testid={`edit-producto-${producto.id}`}
-                >
-                  <Edit className="h-4 w-4 mr-2" />
-                  Editar
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => onDelete(producto)}
-                  className="text-red-600"
-                  data-testid={`delete-producto-${producto.id}`}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Eliminar
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-blue-600 hover:bg-blue-100 hover:text-blue-700 border border-blue-100/50 shadow-sm transition-colors"
+                onClick={() => onView(producto)}
+                title="Ver detalles"
+                data-testid={`view-producto-${producto.id}`}
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-rose-600 hover:bg-rose-100 hover:text-rose-700 border border-rose-100/50 shadow-sm transition-colors"
+                onClick={() => onDelete(producto)}
+                title="Inhabilitar"
+                data-testid={`delete-producto-${producto.id}`}
+              >
+                <Ban className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           )}
         </div>
 
@@ -176,12 +173,17 @@ const Productos = () => {
   const [stockBajoFilter, setStockBajoFilter] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedProducto, setSelectedProducto] = useState(null);
-  const [formData, setFormData] = useState(initialFormState);
+  const [formData, setFormData] = useState({ ...initialFormState, activo: true });
   const [submitting, setSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   const fetchData = useCallback(async () => {
     try {
+      setLoading(true);
       const [productosRes, proveedoresRes] = await Promise.all([
         productosAPI.getAll({
           search: search || undefined,
@@ -190,22 +192,31 @@ const Productos = () => {
               ? categoriaFilter
               : undefined,
           stock_bajo: stockBajoFilter || undefined,
+          page,
+          limit: 12,
         }),
         proveedoresAPI.getAll(),
       ]);
       setProductos(productosRes.data.data);
+      setTotalPages(productosRes.data.pages || 1);
+      setTotalItems(productosRes.data.total || 0);
       setProveedores(proveedoresRes.data.data);
     } catch (error) {
       toast.error("Error al cargar productos");
     } finally {
       setLoading(false);
     }
-  }, [search, categoriaFilter, stockBajoFilter]);
+  }, [search, categoriaFilter, stockBajoFilter, page]);
 
   useEffect(() => {
     const debounce = setTimeout(fetchData, 300);
     return () => clearTimeout(debounce);
   }, [fetchData]);
+
+  // Reset page to 1 when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, categoriaFilter, stockBajoFilter]);
 
   const handleOpenDialog = (producto = null) => {
     if (producto) {
@@ -219,10 +230,11 @@ const Productos = () => {
         unidad: producto.unidad_medida,
         proveedor_id: producto.proveedor_id || "",
         descripcion: producto.descripcion || "",
+        activo: producto.activo !== undefined ? producto.activo : true,
       });
       setSelectedProducto(producto);
     } else {
-      setFormData(initialFormState);
+      setFormData({ ...initialFormState, activo: true });
       setSelectedProducto(null);
     }
     setDialogOpen(true);
@@ -240,11 +252,13 @@ const Productos = () => {
     try {
       const data = {
         ...formData,
+        unidad_medida: formData.unidad, // Correctly map frontend 'unidad' to backend 'unidad_medida'
         precio_compra: parseFloat(formData.precio_compra),
         precio_venta: parseFloat(formData.precio_venta),
         stock: parseInt(formData.stock) || 0,
         stock_minimo: parseInt(formData.stock_minimo) || 5,
         proveedor_id: formData.proveedor_id || null,
+        descripcion: formData.descripcion || null,
       };
 
       if (selectedProducto) {
@@ -268,13 +282,21 @@ const Productos = () => {
     if (!selectedProducto) return;
 
     try {
-      await productosAPI.delete(selectedProducto.id);
-      toast.success("Producto eliminado");
+      // Logic for inhabilitar instead of deleting
+      await productosAPI.update(selectedProducto.id, {
+        ...selectedProducto,
+        precio_compra: parseFloat(selectedProducto.precio_compra),
+        precio_venta: parseFloat(selectedProducto.precio_venta),
+        stock: parseInt(selectedProducto.stock),
+        stock_minimo: parseInt(selectedProducto.stock_minimo),
+        activo: false
+      });
+      toast.success("Producto inhabilitado");
       setDeleteDialogOpen(false);
       setSelectedProducto(null);
       fetchData();
     } catch (error) {
-      toast.error(error.response?.data?.detail || "Error al eliminar producto");
+      toast.error(error.response?.data?.detail || "Error al inhabilitar producto");
     }
   };
 
@@ -289,7 +311,7 @@ const Productos = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Productos</h1>
           <p className="text-sm text-slate-500">
-            {productos.length} productos registrados
+            {totalItems} productos registrados
           </p>
         </div>
         {isAdmin() && (
@@ -356,19 +378,54 @@ const Productos = () => {
           <Loader2 className="h-8 w-8 animate-spin text-rose-600" />
         </div>
       ) : productos.length > 0 ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {productos.map((producto) => (
-            <ProductCard
-              key={producto.id}
-              producto={producto}
-              isAdmin={isAdmin()}
-              onEdit={handleOpenDialog}
-              onDelete={(p) => {
-                setSelectedProducto(p);
-                setDeleteDialogOpen(true);
-              }}
-            />
-          ))}
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {productos.map((producto) => (
+              <ProductCard
+                key={producto.id}
+                producto={producto}
+                isAdmin={isAdmin()}
+                onEdit={handleOpenDialog}
+                onView={(p) => {
+                  setSelectedProducto(p);
+                  setViewDialogOpen(true);
+                }}
+                onDelete={(p) => {
+                  setSelectedProducto(p);
+                  setDeleteDialogOpen(true);
+                }}
+              />
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-200 pt-4">
+              <span className="text-sm text-slate-500">
+                Página {page} de {totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  Siguiente
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <Card className="border-slate-200">
@@ -519,6 +576,21 @@ const Productos = () => {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="descripcion">Descripción</Label>
+              <textarea
+                id="descripcion"
+                className={cn(
+                  "flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                )}
+                value={formData.descripcion}
+                onChange={(e) =>
+                  setFormData({ ...formData, descripcion: e.target.value })
+                }
+                placeholder="Breve descripción del producto..."
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label>Proveedor</Label>
               <Select
                 value={formData.proveedor_id}
@@ -564,28 +636,126 @@ const Productos = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
+      {/* Inhabilitar Confirmation */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar producto?</AlertDialogTitle>
+            <AlertDialogTitle>¿Inhabilitar producto?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará permanentemente el producto "
-              {selectedProducto?.nombre}". Esta acción no se puede deshacer.
+              Esta acción marcará el producto "{selectedProducto?.nombre}" como inactivo. 
+              No se mostrará en las búsquedas de ventas pero se mantendrá en el historial.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700"
+              className="bg-rose-600 hover:bg-rose-700"
               data-testid="confirm-delete-producto-btn"
             >
-              Eliminar
+              Inhabilitar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Detail Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-rose-600" />
+              Detalles del Producto
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedProducto && (
+            <div className="space-y-6 py-4">
+              <div className="flex items-start justify-between border-b pb-4">
+                <div className="space-y-1">
+                  <h3 className="text-xl font-bold text-slate-900">{selectedProducto.nombre}</h3>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">{selectedProducto.categoria}</Badge>
+                    <Badge variant={selectedProducto.activo ? "success" : "destructive"}>
+                      {selectedProducto.activo ? "Activo" : "Inactivo"}
+                    </Badge>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-slate-500 font-medium font-mono">ID: {selectedProducto.id.slice(0, 8)}</p>
+                  <p className="text-xs text-slate-400 mt-1">Cód: {selectedProducto.codigo}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
+                <Card className="bg-slate-50 border-none shadow-none">
+                  <CardContent className="p-4">
+                    <p className="text-xs text-slate-500 uppercase tracking-wider font-bold mb-1">Precio Compra</p>
+                    <p className="text-xl font-bold text-slate-700">{formatCurrency(selectedProducto.precio_compra)}</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-emerald-50 border-none shadow-none">
+                  <CardContent className="p-4">
+                    <p className="text-xs text-emerald-600 uppercase tracking-wider font-bold mb-1">Precio Venta</p>
+                    <p className="text-xl font-bold text-emerald-700">{formatCurrency(selectedProducto.precio_venta)}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                      <Package className="h-5 w-5 text-slate-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-slate-700">Stock Disponible</p>
+                      <p className="text-xs text-slate-500">Unidad: {selectedProducto.unidad_medida}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={cn(
+                      "text-2xl font-bold",
+                      selectedProducto.stock <= selectedProducto.stock_minimo ? "text-amber-600" : "text-slate-900"
+                    )}>
+                      {selectedProducto.stock}
+                    </p>
+                    <p className="text-xs text-slate-400">Mínimo: {selectedProducto.stock_minimo}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-slate-500 text-xs uppercase tracking-wider font-bold">Descripción</Label>
+                  <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg min-h-[60px]">
+                    {selectedProducto.descripcion || "Sin descripción proporcionada."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <Button 
+                  variant="outline"
+                  onClick={() => setViewDialogOpen(false)}
+                >
+                  Cerrar
+                </Button>
+                {isAdmin() && (
+                  <Button 
+                    onClick={() => {
+                      setViewDialogOpen(false);
+                      handleOpenDialog(selectedProducto);
+                    }}
+                    className="bg-amber-500 text-white hover:bg-amber-600"
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Editar Producto
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

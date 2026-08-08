@@ -58,6 +58,11 @@ import {
   Loader2,
   Phone,
   Mail,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Ban,
+  CheckCircle2,
 } from "lucide-react";
 
 const initialFormState = {
@@ -76,29 +81,43 @@ const Clientes = () => {
   const [search, setSearch] = useState("");
   const [tipoFilter, setTipoFilter] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [disableDialogOpen, setDisableDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState(null);
   const [formData, setFormData] = useState(initialFormState);
   const [submitting, setSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   const fetchClientes = useCallback(async () => {
     try {
+      setLoading(true);
       const response = await clientesAPI.getAll({
         search: search || undefined,
         tipo: tipoFilter && tipoFilter !== "all" ? tipoFilter : undefined,
+        page,
+        limit: 10,
       });
       setClientes(response.data.data);
+      setTotalPages(response.data.pages || 1);
+      setTotalItems(response.data.total || 0);
     } catch (error) {
       toast.error("Error al cargar clientes");
     } finally {
       setLoading(false);
     }
-  }, [search, tipoFilter]);
+  }, [search, tipoFilter, page]);
 
   useEffect(() => {
     const debounce = setTimeout(fetchClientes, 300);
     return () => clearTimeout(debounce);
   }, [fetchClientes]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [search, tipoFilter]);
 
   const handleOpenDialog = (cliente = null) => {
     if (cliente) {
@@ -144,7 +163,10 @@ const Clientes = () => {
       };
 
       if (selectedCliente) {
-        await clientesAPI.update(selectedCliente.id, data);
+        await clientesAPI.update(selectedCliente.id, {
+          ...data,
+          activo: selectedCliente.activo // Preserve current active status
+        });
         toast.success("Cliente actualizado");
       } else {
         await clientesAPI.create(data);
@@ -160,18 +182,34 @@ const Clientes = () => {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDisable = async () => {
     if (!selectedCliente) return;
 
+    setSubmitting(true);
     try {
-      await clientesAPI.delete(selectedCliente.id);
-      toast.success("Cliente eliminado");
-      setDeleteDialogOpen(false);
+      await clientesAPI.update(selectedCliente.id, {
+        tipo: selectedCliente.tipo,
+        nombre: selectedCliente.nombre,
+        documento: selectedCliente.documento,
+        telefono: selectedCliente.telefono,
+        email: selectedCliente.email,
+        direccion: selectedCliente.direccion,
+        activo: false,
+      });
+      toast.success("Cliente inhabilitado correctamente");
+      setDisableDialogOpen(false);
       setSelectedCliente(null);
       fetchClientes();
     } catch (error) {
-      toast.error(error.response?.data?.detail || "Error al eliminar cliente");
+      toast.error(error.response?.data?.detail || "Error al inhabilitar cliente");
+    } finally {
+      setSubmitting(false);
     }
+  };
+
+  const handleViewDetails = (cliente) => {
+    setSelectedCliente(cliente);
+    setViewDialogOpen(true);
   };
 
   return (
@@ -181,7 +219,7 @@ const Clientes = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Clientes</h1>
           <p className="text-sm text-slate-500">
-            {clientes.length} clientes registrados
+            {totalItems} clientes registrados
           </p>
         </div>
         <Button
@@ -299,40 +337,45 @@ const Clientes = () => {
                       {formatDate(cliente.created_at)}
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          onClick={() => handleViewDetails(cliente)}
+                          title="Ver detalle"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                          onClick={() => handleOpenDialog(cliente)}
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        {isAdmin() && cliente.activo && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
-                            data-testid={`cliente-menu-${cliente.id}`}
+                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => {
+                              setSelectedCliente(cliente);
+                              setDisableDialogOpen(true);
+                            }}
+                            title="Inhabilitar"
                           >
-                            <MoreVertical className="h-4 w-4" />
+                            <Ban className="h-4 w-4" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleOpenDialog(cliente)}
-                            data-testid={`edit-cliente-${cliente.id}`}
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          {isAdmin() && (
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedCliente(cliente);
-                                setDeleteDialogOpen(true);
-                              }}
-                              className="text-red-600"
-                              data-testid={`delete-cliente-${cliente.id}`}
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Eliminar
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        )}
+                        {!cliente.activo && (
+                            <Badge variant="outline" className="bg-slate-100 text-slate-400 border-slate-200">
+                                Inactivo
+                            </Badge>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -370,54 +413,95 @@ const Clientes = () => {
                         </p>
                       </div>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => handleOpenDialog(cliente)}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-blue-600"
+                        onClick={() => handleViewDetails(cliente)}
+                        title="Ver detalle"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-amber-600"
+                        onClick={() => handleOpenDialog(cliente)}
+                        title="Editar"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      {isAdmin() && cliente.activo && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-red-600"
+                          onClick={() => {
+                            setSelectedCliente(cliente);
+                            setDisableDialogOpen(true);
+                          }}
+                          title="Inhabilitar"
                         >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Editar
-                        </DropdownMenuItem>
-                        {isAdmin() && (
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setSelectedCliente(cliente);
-                              setDeleteDialogOpen(true);
-                            }}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Eliminar
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          <Ban className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  {(cliente.telefono || cliente.email) && (
-                    <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-500">
+                  <div className="mt-3 flex flex-col gap-2">
+                    <div className="flex flex-wrap gap-3 text-sm text-slate-500">
                       {cliente.telefono && (
                         <span className="flex items-center gap-1">
-                          <Phone className="h-3 w-3" />
+                          <Phone className="h-3 w-3 text-rose-500" />
                           {cliente.telefono}
                         </span>
                       )}
                       {cliente.email && (
                         <span className="flex items-center gap-1">
-                          <Mail className="h-3 w-3" />
+                          <Mail className="h-3 w-3 text-rose-500" />
                           {cliente.email}
                         </span>
                       )}
                     </div>
-                  )}
+                    {!cliente.activo && (
+                        <Badge variant="outline" className="bg-slate-100 text-slate-400 border-slate-200 w-fit">
+                            Inactivo
+                        </Badge>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-200 mt-4 pt-4">
+              <span className="text-sm text-slate-500">
+                Página {page} de {totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  Siguiente
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </>
       ) : (
         <Card className="border-slate-200">
@@ -581,7 +665,9 @@ const Clientes = () => {
               >
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : null}
+                ) : (
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                )}
                 {selectedCliente ? "Actualizar" : "Crear"}
               </Button>
             </DialogFooter>
@@ -589,28 +675,116 @@ const Clientes = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      {/* Disable Confirmation */}
+      <AlertDialog open={disableDialogOpen} onOpenChange={setDisableDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar cliente?</AlertDialogTitle>
+            <AlertDialogTitle>¿Inhabilitar cliente?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará permanentemente al cliente "
-              {selectedCliente?.nombre}".
+              Esta acción marcará al cliente "{selectedCliente?.nombre}" como inactivo. 
+              No podrá ser seleccionado en nuevas ventas, pero sus registros históricos se mantendrán.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={submitting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDisable();
+              }}
+              disabled={submitting}
               className="bg-red-600 hover:bg-red-700"
-              data-testid="confirm-delete-cliente-btn"
             >
-              Eliminar
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Ban className="h-4 w-4 mr-2" />}
+              Sí, inhabilitar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Details Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-rose-600" />
+              Detalle del Cliente
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedCliente && (
+            <div className="space-y-6 pt-2">
+              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <div className={cn(
+                  "w-16 h-16 rounded-full flex items-center justify-center text-2xl font-bold transition-transform hover:scale-105",
+                  selectedCliente.tipo === "persona" ? "bg-rose-100 text-rose-700" : "bg-blue-100 text-blue-700"
+                )}>
+                  {selectedCliente.tipo === "persona" ? <User className="h-8 w-8" /> : <Building className="h-8 w-8" />}
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">{selectedCliente.nombre}</h3>
+                  <Badge variant={selectedCliente.activo ? "success" : "secondary"}>
+                    {selectedCliente.activo ? "Activo" : "Inactivo"}
+                  </Badge>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Documento</span>
+                  <p className="font-mono text-slate-700 bg-white p-2 rounded border border-slate-100">
+                    {selectedCliente.tipo === "persona" ? "DNI: " : "RUC: "} {selectedCliente.documento}
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Información de Contacto</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-slate-600 bg-slate-50 p-2 rounded">
+                      <Phone className="h-4 w-4 text-rose-500" />
+                      <span>{selectedCliente.telefono || "No registrado"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-600 bg-slate-50 p-2 rounded">
+                      <Mail className="h-4 w-4 text-rose-500" />
+                      <span>{selectedCliente.email || "No registrado"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Dirección</span>
+                  <p className="text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    {selectedCliente.direccion || "No registrada"}
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Fecha de Registro</span>
+                  <p className="text-sm text-slate-500">
+                    {new Date(selectedCliente.created_at).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setViewDialogOpen(false)} className="w-full sm:w-auto">
+                  Cerrar
+                </Button>
+                <Button 
+                  className="bg-rose-600 hover:bg-rose-700 w-full sm:w-auto"
+                  onClick={() => {
+                    setViewDialogOpen(false);
+                    handleOpenDialog(selectedCliente);
+                  }}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar Cliente
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

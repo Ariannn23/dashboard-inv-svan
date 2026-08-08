@@ -18,6 +18,7 @@ import HistorialCotizaciones from "./features/cotizaciones/pages/HistorialCotiza
 import Inventario from "./features/inventario/pages/Inventario";
 import Reportes from "./features/reportes/pages/Reportes";
 import Compras from "./features/compras/pages/Compras";
+import NotasCredito from "./features/notas-credito/pages/NotasCredito";
 
 // Layout
 import MainLayout from "@/components/layout/MainLayout";
@@ -69,6 +70,7 @@ const AppRoutes = () => {
                 <Route path="/inventario" element={<Inventario />} />
                 <Route path="/reportes" element={<Reportes />} />
                 <Route path="/compras" element={<Compras />} />
+                <Route path="/notas-credito" element={<NotasCredito />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </MainLayout>

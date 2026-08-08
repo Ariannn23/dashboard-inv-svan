@@ -9,8 +9,11 @@ const calculateTotals = (items) => {
 };
 
 export const useCotizacionStore = create((set, get) => ({
+  cotizacionId: null,
+  numeroCotizacion: "",
   items: [],
   cliente: {
+    id: null,
     nombre: "",
     documento: "00000000",
   },
@@ -89,8 +92,10 @@ export const useCotizacionStore = create((set, get) => ({
   },
 
   clearCotizacion: () => set({
+    cotizacionId: null,
+    numeroCotizacion: "",
     items: [],
-    cliente: { nombre: "", documento: "00000000" },
+    cliente: { id: null, nombre: "", documento: "00000000" },
     notas: "",
     subtotal: 0,
     igv: 0,
@@ -98,4 +103,18 @@ export const useCotizacionStore = create((set, get) => ({
     itemCount: 0,
   }),
 
+  setEditMode: (cotizacionId, numeroCotizacion, cliente, notas, items) => {
+    set({
+      cotizacionId,
+      numeroCotizacion,
+      cliente: {
+        id: cliente?.id || null,
+        nombre: cliente?.nombre || "Cliente General",
+        documento: cliente?.documento || "00000000",
+      },
+      notas: notas || "",
+      items: items,
+      ...calculateTotals(items)
+    });
+  },
 }));

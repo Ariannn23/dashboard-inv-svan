@@ -38,6 +38,9 @@ class Venta(Base):
     items: Mapped[list["VentaItem"]] = relationship(
         "VentaItem", back_populates="venta", cascade="all, delete-orphan", lazy="selectin"
     )
+    notas_credito: Mapped[list["NotaCredito"]] = relationship(
+        "NotaCredito", back_populates="venta", lazy="selectin"
+    )
 
     def __repr__(self) -> str:
         return f"<Venta {self.numero_comprobante} - Total: {self.total}>"

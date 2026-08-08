@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { ventasAPI } from "../services/ventasAPI";
 import { formatCurrency, formatDateTime, cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -42,9 +43,12 @@ import {
   Download,
   Loader2,
   History,
+  RotateCcw,
+  AlertTriangle,
 } from "lucide-react";
 
 const HistorialVentas = () => {
+  const navigate = useNavigate();
   const [ventas, setVentas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -225,6 +229,11 @@ const HistorialVentas = () => {
                         >
                           {venta.numero_comprobante}
                         </Badge>
+                        {venta.estado === "anulada" && (
+                          <Badge className="bg-rose-100 text-rose-700 hover:bg-rose-100 border-rose-200">
+                            ANULADA
+                          </Badge>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -274,6 +283,17 @@ const HistorialVentas = () => {
                             <Download className="h-4 w-4" />
                           )}
                         </Button>
+                        {venta.estado !== "anulada" && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-rose-600 hover:bg-rose-50"
+                            onClick={() => navigate("/notas-credito")}
+                            title="Emitir Nota de Crédito"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -338,6 +358,12 @@ const HistorialVentas = () => {
                       </Button>
                     </div>
                   </div>
+                  {venta.estado === "anulada" && (
+                    <div className="mt-2 p-2 bg-rose-50 rounded border border-rose-100 flex items-center gap-2 text-rose-700 text-xs font-bold">
+                        <AlertTriangle className="h-3 w-3" />
+                        VENTA ANULADA
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
@@ -371,7 +397,7 @@ const HistorialVentas = () => {
 
           {selectedVenta && (
             <ScrollArea className="max-h-[60vh]">
-              <div className="space-y-4">
+              <div className="space-y-4 pr-6 pb-4">
                 {/* Header Info */}
                 <div className="p-4 bg-slate-50 rounded-lg space-y-2">
                   <div className="flex items-center justify-between">
@@ -389,6 +415,15 @@ const HistorialVentas = () => {
                       {formatDateTime(selectedVenta.fecha)}
                     </span>
                   </div>
+                  {selectedVenta.estado === "anulada" && (
+                    <div className="p-2 bg-rose-100 text-rose-700 rounded flex items-center gap-2 border border-rose-200">
+                        <AlertTriangle className="h-4 w-4" />
+                        <span className="text-xs font-bold">
+                          ESTA VENTA HA SIDO ANULADA CON NOTA DE CRÉDITO
+                          {selectedVenta.nota_credito_numero && `: ${selectedVenta.nota_credito_numero}`}
+                        </span>
+                    </div>
+                  )}
                   <p className="font-medium">
                     {selectedVenta.cliente_nombre || "Cliente General"}
                   </p>

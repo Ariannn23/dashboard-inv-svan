@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { useAuthStore } from "@/store/authStore";
 import { comprasAPI } from "@/features/compras/services/comprasAPI";
 import { proveedoresAPI } from "@/features/proveedores/services/proveedoresAPI";
@@ -83,6 +84,7 @@ const estadoConfig = {
 
 const Compras = () => {
   const { isAdmin } = useAuthStore();
+  const location = useLocation();
   const [compras, setCompras] = useState([]);
   const [proveedores, setProveedores] = useState([]);
   const [productos, setProductos] = useState([]);
@@ -139,6 +141,28 @@ const Compras = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Auto-fill from Cotización if navigating from HistorialCotizaciones
+  useEffect(() => {
+    if (location.state?.fillFromCotizacion && productos.length > 0) {
+      const newItems = location.state.fillFromCotizacion.map(cotItem => {
+        const prod = productos.find(p => p.id === cotItem.producto_id);
+        const precio = prod ? prod.precio_compra : 0;
+        return {
+          producto_id: cotItem.producto_id,
+          producto_nombre: cotItem.producto_nombre,
+          cantidad: cotItem.cantidad,
+          precio_unitario: precio,
+          subtotal: cotItem.cantidad * precio
+        };
+      });
+      setItemsCarrito(newItems);
+      setDialogOpen(true);
+      
+      // Clean up state so we don't trigger it again on re-renders
+      window.history.replaceState({}, document.title)
+    }
+  }, [location.state, productos]);
 
   // Carrito helpers
   const addToCarrito = (producto) => {
@@ -529,7 +553,7 @@ const Compras = () => {
                     <SelectContent>
                       {proveedores.map((prov) => (
                         <SelectItem key={prov.id} value={prov.id}>
-                          {prov.nombre} - {prov.documento}
+                          {prov.nombre} - {prov.ruc}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -751,7 +775,7 @@ const Compras = () => {
 
           {selectedCompra && (
             <ScrollArea className="max-h-[60vh]">
-              <div className="space-y-4">
+              <div className="space-y-4 pr-6 pb-4">
                 {/* Header Info */}
                 <div className="p-4 bg-slate-50 rounded-lg space-y-2">
                   <div className="flex items-center justify-between">

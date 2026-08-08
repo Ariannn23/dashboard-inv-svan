@@ -41,7 +41,6 @@ import {
 import {
   Search,
   Plus,
-  MoreVertical,
   Edit,
   Trash2,
   Truck,
@@ -49,6 +48,11 @@ import {
   Phone,
   Mail,
   User,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Ban,
+  CheckCircle2,
 } from "lucide-react";
 
 const initialFormState = {
@@ -66,28 +70,42 @@ const Proveedores = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [disableDialogOpen, setDisableDialogOpen] = useState(false);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [selectedProveedor, setSelectedProveedor] = useState(null);
   const [formData, setFormData] = useState(initialFormState);
   const [submitting, setSubmitting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
 
   const fetchProveedores = useCallback(async () => {
     try {
+      setLoading(true);
       const response = await proveedoresAPI.getAll({
         search: search || undefined,
+        page,
+        limit: 10,
       });
       setProveedores(response.data.data);
+      setTotalPages(response.data.pages || 1);
+      setTotalItems(response.data.total || 0);
     } catch (error) {
       toast.error("Error al cargar proveedores");
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, page]);
 
   useEffect(() => {
     const debounce = setTimeout(fetchProveedores, 300);
     return () => clearTimeout(debounce);
   }, [fetchProveedores]);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
 
   const handleOpenDialog = (proveedor = null) => {
     if (proveedor) {
@@ -128,7 +146,10 @@ const Proveedores = () => {
       };
 
       if (selectedProveedor) {
-        await proveedoresAPI.update(selectedProveedor.id, data);
+        await proveedoresAPI.update(selectedProveedor.id, {
+          ...data,
+          activo: selectedProveedor.activo // Preserve current active status
+        });
         toast.success("Proveedor actualizado");
       } else {
         await proveedoresAPI.create(data);
@@ -144,20 +165,29 @@ const Proveedores = () => {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDisable = async () => {
     if (!selectedProveedor) return;
 
+    setSubmitting(true);
     try {
-      await proveedoresAPI.delete(selectedProveedor.id);
-      toast.success("Proveedor eliminado");
-      setDeleteDialogOpen(false);
+      await proveedoresAPI.update(selectedProveedor.id, {
+        ...selectedProveedor,
+        activo: false,
+      });
+      toast.success("Proveedor inhabilitado correctamente");
+      setDisableDialogOpen(false);
       setSelectedProveedor(null);
       fetchProveedores();
     } catch (error) {
-      toast.error(
-        error.response?.data?.detail || "Error al eliminar proveedor",
-      );
+      toast.error(error.response?.data?.detail || "Error al inhabilitar proveedor");
+    } finally {
+      setSubmitting(false);
     }
+  };
+
+  const handleViewDetails = (proveedor) => {
+    setSelectedProveedor(proveedor);
+    setViewDialogOpen(true);
   };
 
   if (!isAdmin()) {
@@ -185,7 +215,7 @@ const Proveedores = () => {
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Proveedores</h1>
           <p className="text-sm text-slate-500">
-            {proveedores.length} proveedores registrados
+            {totalItems} proveedores registrados
           </p>
         </div>
         <Button
@@ -275,38 +305,45 @@ const Proveedores = () => {
                       {formatDate(proveedor.created_at)}
                     </TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          onClick={() => handleViewDetails(proveedor)}
+                          title="Ver detalle"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                          onClick={() => handleOpenDialog(proveedor)}
+                          title="Editar"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        {isAdmin() && proveedor.activo && (
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
-                            data-testid={`proveedor-menu-${proveedor.id}`}
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={() => handleOpenDialog(proveedor)}
-                            data-testid={`edit-proveedor-${proveedor.id}`}
-                          >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
+                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
                             onClick={() => {
                               setSelectedProveedor(proveedor);
-                              setDeleteDialogOpen(true);
+                              setDisableDialogOpen(true);
                             }}
-                            className="text-red-600"
-                            data-testid={`delete-proveedor-${proveedor.id}`}
+                            title="Inhabilitar"
                           >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Eliminar
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            <Ban className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {!proveedor.activo && (
+                            <div className="px-2 py-1 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-400 border border-slate-200">
+                                Inactivo
+                            </div>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -333,50 +370,95 @@ const Proveedores = () => {
                         </p>
                       </div>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => handleOpenDialog(proveedor)}
-                        >
-                          <Edit className="h-4 w-4 mr-2" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-blue-600"
+                        onClick={() => handleViewDetails(proveedor)}
+                        title="Ver detalle"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-amber-600"
+                        onClick={() => handleOpenDialog(proveedor)}
+                        title="Editar"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      {isAdmin() && proveedor.activo && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-red-600"
                           onClick={() => {
                             setSelectedProveedor(proveedor);
-                            setDeleteDialogOpen(true);
+                            setDisableDialogOpen(true);
                           }}
-                          className="text-red-600"
+                          title="Inhabilitar"
                         >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Eliminar
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          <Ban className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-500">
-                    {proveedor.contacto && (
-                      <span className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        {proveedor.contacto}
-                      </span>
-                    )}
-                    {proveedor.telefono && (
-                      <span className="flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
-                        {proveedor.telefono}
-                      </span>
+                  <div className="mt-3 flex flex-col gap-2">
+                    <div className="flex flex-wrap gap-3 text-sm text-slate-500">
+                      {proveedor.contacto && (
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3 text-rose-500" />
+                          {proveedor.contacto}
+                        </span>
+                      )}
+                      {proveedor.telefono && (
+                        <span className="flex items-center gap-1">
+                          <Phone className="h-3 w-3 text-rose-500" />
+                          {proveedor.telefono}
+                        </span>
+                      )}
+                    </div>
+                    {!proveedor.activo && (
+                      <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-400 border border-slate-200 w-fit">
+                        Inactivo
+                      </div>
                     )}
                   </div>
                 </CardContent>
               </Card>
             ))}
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-slate-200 mt-4 pt-4">
+              <span className="text-sm text-slate-500">
+                Página {page} de {totalPages}
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                >
+                  Siguiente
+                  <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
         </>
       ) : (
         <Card className="border-slate-200">
@@ -518,28 +600,119 @@ const Proveedores = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+      {/* Disable Confirmation */}
+      <AlertDialog open={disableDialogOpen} onOpenChange={setDisableDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar proveedor?</AlertDialogTitle>
+            <AlertDialogTitle>¿Inhabilitar proveedor?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta acción eliminará permanentemente al proveedor "
-              {selectedProveedor?.nombre}".
+              Esta acción marcará al proveedor "{selectedProveedor?.nombre}" como inactivo. 
+              No podrá ser seleccionado en nuevas compras, pero sus registros históricos se mantendrán.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={submitting}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDelete}
+              onClick={(e) => {
+                e.preventDefault();
+                handleDisable();
+              }}
+              disabled={submitting}
               className="bg-red-600 hover:bg-red-700"
-              data-testid="confirm-delete-proveedor-btn"
             >
-              Eliminar
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Ban className="h-4 w-4 mr-2" />}
+              Sí, inhabilitar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* View Details Dialog */}
+      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5 text-rose-600" />
+              Detalle del Proveedor
+            </DialogTitle>
+          </DialogHeader>
+
+          {selectedProveedor && (
+            <div className="space-y-6 pt-2">
+              <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <div className="w-16 h-16 rounded-full bg-rose-100 text-rose-700 flex items-center justify-center text-2xl font-bold transition-transform hover:scale-105">
+                  <Truck className="h-8 w-8" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-900">{selectedProveedor.nombre}</h3>
+                  <div className={`mt-1 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                    selectedProveedor.activo ? "bg-emerald-100 text-emerald-800 border-emerald-200" : "bg-slate-100 text-slate-800 border-slate-200"
+                  }`}>
+                    {selectedProveedor.activo ? "Activo" : "Inactivo"}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">RUC</span>
+                  <p className="font-mono text-slate-700 bg-white p-2 rounded border border-slate-100">
+                    {selectedProveedor.ruc}
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Información de Contacto</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-slate-600 bg-slate-50 p-2 rounded">
+                      <User className="h-4 w-4 text-rose-500" />
+                      <span>{selectedProveedor.contacto || "No registrado"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-600 bg-slate-50 p-2 rounded">
+                      <Phone className="h-4 w-4 text-rose-500" />
+                      <span>{selectedProveedor.telefono || "No registrado"}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-600 bg-slate-50 p-2 rounded">
+                      <Mail className="h-4 w-4 text-rose-500" />
+                      <span>{selectedProveedor.email || "No registrado"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Dirección</span>
+                  <p className="text-slate-700 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                    {selectedProveedor.direccion || "No registrada"}
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Fecha de Registro</span>
+                  <p className="text-sm text-slate-500">
+                    {new Date(selectedProveedor.created_at).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setViewDialogOpen(false)} className="w-full sm:w-auto">
+                  Cerrar
+                </Button>
+                <Button 
+                  className="bg-rose-600 hover:bg-rose-700 w-full sm:w-auto"
+                  onClick={() => {
+                    setViewDialogOpen(false);
+                    handleOpenDialog(selectedProveedor);
+                  }}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Editar Proveedor
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

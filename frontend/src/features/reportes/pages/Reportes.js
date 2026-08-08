@@ -412,7 +412,7 @@ const Reportes = () => {
                           <YAxis
                             type="category"
                             dataKey="vendedor"
-                            width={100}
+                            width={200}
                           />
                           <Tooltip
                             formatter={(value) => [
@@ -621,7 +621,7 @@ const Reportes = () => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="h-72">
+                  <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -630,10 +630,10 @@ const Reportes = () => {
                           nameKey="categoria"
                           cx="50%"
                           cy="50%"
-                          outerRadius={100}
-                          label={({ categoria, percent }) =>
-                            `${categoria} (${(percent * 100).toFixed(0)}%)`
-                          }
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
                         >
                           {ventasPorCategoria.map((_, index) => (
                             <Cell
@@ -643,6 +643,15 @@ const Reportes = () => {
                           ))}
                         </Pie>
                         <Tooltip formatter={(value) => formatCurrency(value)} />
+                        <Legend 
+                          verticalAlign="bottom" 
+                          align="center"
+                          layout="horizontal"
+                          wrapperStyle={{
+                            fontSize: '12px',
+                            paddingTop: '20px'
+                          }}
+                        />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>

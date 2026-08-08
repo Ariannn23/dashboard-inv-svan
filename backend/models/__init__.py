@@ -6,6 +6,7 @@ from .venta import Venta, VentaItem
 from .compra import Compra, CompraItem
 from .movimiento import Movimiento
 from .cotizacion import Cotizacion, CotizacionItem
+from .nota_credito import NotaCredito, NotaCreditoItem
 
 __all__ = [
     "User",
@@ -19,4 +20,6 @@ __all__ = [
     "Movimiento",
     "Cotizacion",
     "CotizacionItem",
+    "NotaCredito",
+    "NotaCreditoItem",
 ]

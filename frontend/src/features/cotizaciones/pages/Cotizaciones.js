@@ -173,6 +173,7 @@ const CartContent = ({
   clearCart,
   handleGuardarCotizacion,
   submitting,
+  isEditing,
 }) => {
   return (
     <div className="flex flex-col h-full">
@@ -253,7 +254,7 @@ const CartContent = ({
             ) : (
               <Check className="h-4 w-4 mr-2" />
             )}
-            Guardar
+            {isEditing ? "Actualizar" : "Guardar"}
           </Button>
         </div>
       </div>
@@ -274,6 +275,8 @@ const Cotizaciones = () => {
     clearCotizacion: clearCart,
     cliente,
     setCliente,
+    cotizacionId,
+    numeroCotizacion,
   } = useCotizacionStore();
 
   const [productos, setProductos] = useState([]);
@@ -361,7 +364,10 @@ const Cotizaciones = () => {
         notas: "",
       };
 
-      const response = await cotizacionesAPI.create(cotizacionData);
+      const response = cotizacionId 
+        ? await cotizacionesAPI.update(cotizacionId, cotizacionData)
+        : await cotizacionesAPI.create(cotizacionData);
+        
       setLastCotizacion({
         ...response,
         total,
@@ -406,7 +412,9 @@ const Cotizaciones = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Nueva Cotización</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {cotizacionId ? `Editando Cotización: ${numeroCotizacion}` : "Nueva Cotización"}
+          </h1>
           <p className="text-sm text-slate-500">Cotizador Rápido</p>
         </div>
 
@@ -450,6 +458,7 @@ const Cotizaciones = () => {
               clearCart={clearCart}
               handleGuardarCotizacion={handleGuardarCotizacion}
               submitting={submitting}
+              isEditing={!!cotizacionId}
             />
           </SheetContent>
         </Sheet>
@@ -549,6 +558,7 @@ const Cotizaciones = () => {
             clearCart={clearCart}
             handleGuardarCotizacion={handleGuardarCotizacion}
             submitting={submitting}
+            isEditing={!!cotizacionId}
           />
         </Card>
       </div>

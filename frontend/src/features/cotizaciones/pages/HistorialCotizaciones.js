@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { cotizacionesAPI } from "../services/cotizacionesAPI";
 import { formatCurrency, formatDateTime, cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useCotizacionStore } from "@/store/cotizacionStore";
 import {
   Card,
   CardContent,
@@ -22,7 +24,18 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Table,
   TableBody,
@@ -40,10 +53,13 @@ import {
   Download,
   Loader2,
   History,
-  ShoppingCart
+  ShoppingCart,
+  Pencil
 } from "lucide-react";
 
 const HistorialCotizaciones = () => {
+  const navigate = useNavigate();
+  const setEditMode = useCotizacionStore((state) => state.setEditMode);
   const [cotizaciones, setCotizaciones] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -52,8 +68,10 @@ const HistorialCotizaciones = () => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [downloading, setDownloading] = useState(null);
   const [converting, setConverting] = useState(null);
+  const [confirmConvertOpen, setConfirmConvertOpen] = useState(false);
+  const [confirmCotId, setConfirmCotId] = useState(null);
 
-  const fetchCotizaciones = async () => {
+  const fetchCotizaciones = useCallback(async () => {
     try {
       const response = await cotizacionesAPI.getAll({
         estado: estadoFilter !== "all" ? estadoFilter : undefined,
@@ -64,11 +82,11 @@ const HistorialCotizaciones = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [estadoFilter]);
 
   useEffect(() => {
     fetchCotizaciones();
-  }, [estadoFilter]);
+  }, [fetchCotizaciones]);
 
   const filteredCotizaciones = cotizaciones.filter((cotizacion) => {
     if (!search) return true;
@@ -79,6 +97,17 @@ const HistorialCotizaciones = () => {
       cotizacion.vendedor_nombre?.toLowerCase().includes(searchLower)
     );
   });
+
+  const handleEditCotizacion = (cot) => {
+    setEditMode(
+      cot.id, 
+      cot.numero_cotizacion, 
+      { id: cot.cliente_id, nombre: cot.cliente_nombre, documento: cot.cliente_documento || "00000000" }, 
+      cot.notas, 
+      cot.items
+    );
+    navigate("/cotizaciones");
+  };
 
   const handleViewDetails = (cot) => {
     setSelectedCotizacion(cot);
@@ -98,8 +127,7 @@ const HistorialCotizaciones = () => {
   };
   
   const handleConvertirVenta = async (cotId) => {
-    if(!window.confirm("¿Estás seguro de convertir esta cotización en boleta de venta? (Afectará stock inmediato)")) return;
-    
+    setConfirmConvertOpen(false);
     setConverting(cotId);
     try {
       await cotizacionesAPI.convertirAVenta(cotId, "boleta");
@@ -114,6 +142,7 @@ const HistorialCotizaciones = () => {
       toast.error(errorMessage);
     } finally {
         setConverting(null);
+        setConfirmCotId(null);
     }
   };
 
@@ -255,6 +284,17 @@ const HistorialCotizaciones = () => {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
+                        {(cot.estado === "borrador" || cot.estado === "enviada") && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            onClick={() => handleEditCotizacion(cot)}
+                            title="Editar"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -317,6 +357,17 @@ const HistorialCotizaciones = () => {
                       Vendedor: {cot.vendedor_nombre}
                     </p>
                     <div className="flex gap-2">
+                      {(cot.estado === "borrador" || cot.estado === "enviada") && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditCotizacion(cot)}
+                          className="text-blue-600"
+                        >
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Editar
+                        </Button>
+                      )}
                       <Button
                         variant="outline"
                         size="sm"
@@ -371,8 +422,8 @@ const HistorialCotizaciones = () => {
           </DialogHeader>
 
           {selectedCotizacion && (
-            <ScrollArea className="max-h-[60vh]">
-              <div className="space-y-4">
+            <ScrollArea className="max-h-[70vh]">
+              <div className="space-y-4 pr-6 pb-4">
                 {/* Header Info */}
                 <div className="p-4 bg-slate-50 rounded-lg space-y-2">
                   <div className="flex items-center justify-between">
@@ -439,13 +490,15 @@ const HistorialCotizaciones = () => {
                     </span>
                   </div>
                 </div>
-
                 {/* Action Buttons */}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-slate-200">
                     {(selectedCotizacion.estado === 'borrador' || selectedCotizacion.estado === 'enviada') && (
                         <Button
                             className="w-full bg-emerald-600 hover:bg-emerald-700"
-                            onClick={() => handleConvertirVenta(selectedCotizacion.id)}
+                            onClick={() => {
+                            setConfirmCotId(selectedCotizacion.id);
+                            setConfirmConvertOpen(true);
+                        }}
                             disabled={converting === selectedCotizacion.id}
                         >
                             {converting === selectedCotizacion.id ? (
@@ -456,6 +509,15 @@ const HistorialCotizaciones = () => {
                             Aprobar y Convertir a Venta
                         </Button>
                     )}
+
+                    <Button
+                        variant="default"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={() => navigate("/compras", { state: { fillFromCotizacion: selectedCotizacion.items } })}
+                    >
+                        <Receipt className="h-4 w-4 mr-2" />
+                        Generar Orden de Compra
+                    </Button>
                     
                     <Button
                         variant="outline"
@@ -476,6 +538,29 @@ const HistorialCotizaciones = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Confirm Convert AlertDialog */}
+      <AlertDialog open={confirmConvertOpen} onOpenChange={setConfirmConvertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Convertir cotización a venta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción convertirá la cotización en una boleta de venta.
+              El stock de los productos se descontará de forma inmediata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setConfirmCotId(null)}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleConvertirVenta(confirmCotId)}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              Sí, convertir a venta
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

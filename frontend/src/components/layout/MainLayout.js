@@ -30,6 +30,7 @@ import {
   Wheat,
   FilePlus,
   Archive,
+  RotateCcw,
 } from "lucide-react";
 
 const navItems = [
@@ -42,6 +43,7 @@ const navItems = [
   { path: "/clientes", label: "Clientes", icon: Users },
   { path: "/proveedores", label: "Proveedores", icon: Truck },
   { path: "/historial-ventas", label: "Historial Ventas", icon: History },
+  { path: "/notas-credito", label: "Notas de Crédito", icon: RotateCcw },
   { path: "/historial-cotizaciones", label: "Historial Cotizaciones", icon: Archive },
   { path: "/reportes", label: "Reportes", icon: FileSpreadsheet },
 ];
@@ -51,6 +53,7 @@ const mobileNavItems = [
   { path: "/ventas", label: "Venta", icon: ShoppingCart },
   { path: "/productos", label: "Productos", icon: Package },
   { path: "/inventario", label: "Inventario", icon: ClipboardList },
+  { path: "/notas-credito", label: "Notas NC", icon: RotateCcw },
 ];
 
 const NavItem = ({ item, isActive, collapsed, onClick }) => {

@@ -55,6 +55,8 @@ import {
   ClipboardList,
   TrendingUp,
   TrendingDown,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 const Inventario = () => {
@@ -74,35 +76,59 @@ const Inventario = () => {
     observaciones: "",
   });
   const [submitting, setSubmitting] = useState(false);
+  const [pageStock, setPageStock] = useState(1);
+  const [totalPagesStock, setTotalPagesStock] = useState(1);
+  const [pageMovimientos, setPageMovimientos] = useState(1);
+  const [totalPagesMovimientos, setTotalPagesMovimientos] = useState(1);
 
   const fetchData = useCallback(async () => {
     try {
-      const [productosRes, movimientosRes] = await Promise.all([
-        productosAPI.getAll(),
-        inventarioAPI.getMovimientos({
-          producto_id:
-            productoFilter && productoFilter !== "all"
-              ? productoFilter
-              : undefined,
-          tipo: tipoFilter && tipoFilter !== "all" ? tipoFilter : undefined,
-        }),
-      ]);
-      setProductos(productosRes.data.data);
-      setMovimientos(movimientosRes.data.data);
+      setLoading(true);
+      if (activeTab === "stock") {
+          const res = await productosAPI.getAll({
+            search: search || undefined,
+            page: pageStock,
+            limit: 10,
+          });
+          setProductos(res.data.data);
+          setTotalPagesStock(res.data.pages || 1);
+      } else {
+          const res = await inventarioAPI.getMovimientos({
+            producto_id:
+              productoFilter && productoFilter !== "all"
+                ? productoFilter
+                : undefined,
+            tipo: tipoFilter && tipoFilter !== "all" ? tipoFilter : undefined,
+            page: pageMovimientos,
+            limit: 10,
+          });
+          setMovimientos(res.data.data);
+          setTotalPagesMovimientos(res.data.pages || 1);
+      }
     } catch (error) {
       toast.error("Error al cargar datos");
     } finally {
       setLoading(false);
     }
-  }, [productoFilter, tipoFilter]);
+  }, [search, productoFilter, tipoFilter, activeTab, pageStock, pageMovimientos]);
 
   useEffect(() => {
-    fetchData();
+    const debounce = setTimeout(fetchData, 300);
+    return () => clearTimeout(debounce);
   }, [fetchData]);
 
-  const handleOpenDialog = (tipo) => {
+  // Reset page relative to its tab filters
+  useEffect(() => {
+     setPageStock(1);
+  }, [search]);
+
+  useEffect(() => {
+     setPageMovimientos(1);
+  }, [productoFilter, tipoFilter]);
+
+  const handleOpenDialog = (tipo, producto_id = "") => {
     setMovimientoTipo(tipo);
-    setFormData({ producto_id: "", cantidad: "", observaciones: "" });
+    setFormData({ producto_id: producto_id, cantidad: "", observaciones: "" });
     setDialogOpen(true);
   };
 
@@ -172,27 +198,6 @@ const Inventario = () => {
             Control de stock y movimientos
           </p>
         </div>
-        {isAdmin() && (
-          <div className="flex gap-2">
-            <Button
-              onClick={() => handleOpenDialog("entrada")}
-              className="bg-emerald-600 hover:bg-emerald-700"
-              data-testid="add-entrada-btn"
-            >
-              <ArrowDownCircle className="h-4 w-4 mr-2" />
-              Entrada
-            </Button>
-            <Button
-              onClick={() => handleOpenDialog("salida")}
-              variant="outline"
-              className="border-amber-500 text-amber-600 hover:bg-amber-50"
-              data-testid="add-salida-btn"
-            >
-              <ArrowUpCircle className="h-4 w-4 mr-2" />
-              Salida
-            </Button>
-          </div>
-        )}
       </div>
 
       {/* Summary Cards */}
@@ -299,11 +304,14 @@ const Inventario = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Producto</TableHead>
-                        <TableHead className="text-center">Stock</TableHead>
-                        <TableHead className="text-center">Mínimo</TableHead>
-                        <TableHead className="text-right">Valor</TableHead>
+                        <TableHead>Producto / SKU</TableHead>
+                        <TableHead className="text-right">Precio</TableHead>
+                        <TableHead className="text-center">Rentabilidad</TableHead>
+                        <TableHead className="text-center">Stock Actual</TableHead>
+                        <TableHead className="text-right">Valorización</TableHead>
+                        <TableHead className="text-center">Último Mov.</TableHead>
                         <TableHead className="text-center">Estado</TableHead>
+                        {isAdmin() && <TableHead className="text-center">Ajuste Rápido</TableHead>}
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -311,61 +319,129 @@ const Inventario = () => {
                         const stockBajo =
                           producto.stock <= producto.stock_minimo;
                         const agotado = producto.stock === 0;
+                        const margen = producto.precio_compra > 0 
+                                ? (((producto.precio_venta - producto.precio_compra) / producto.precio_compra) * 100).toFixed(1)
+                                : 0;
 
                         return (
                           <TableRow key={producto.id}>
                             <TableCell>
                               <div>
-                                <p className="font-medium text-slate-900">
-                                  {producto.nombre}
-                                </p>
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs mt-1"
-                                >
-                                  {producto.categoria}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-slate-900 leading-none">
+                                    {producto.nombre}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2 mt-1.5">
+                                  <span className="text-xs font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                    {producto.codigo || "SIN SKU"}
+                                  </span>
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-[10px] px-1.5 py-0 bg-slate-100 text-slate-600 hover:bg-slate-200"
+                                  >
+                                    {producto.categoria}
+                                  </Badge>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex flex-col items-end">
+                                <span className="font-medium text-slate-700">
+                                  {formatCurrency(producto.precio_venta)}
+                                </span>
+                                <span className="text-[10px] text-slate-400" title="Precio de Compra">
+                                  Costo: {formatCurrency(producto.precio_compra)}
+                                </span>
                               </div>
                             </TableCell>
                             <TableCell className="text-center">
-                              <span
-                                className={cn(
-                                  "font-semibold",
-                                  agotado && "text-red-600",
-                                  stockBajo && !agotado && "text-amber-600",
-                                  !stockBajo && "text-emerald-600",
-                                )}
-                              >
-                                {producto.stock}
-                              </span>
-                              <span className="text-sm text-slate-400 ml-1">
-                                {producto.unidad}
-                              </span>
+                              <Badge className={cn("text-xs bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100", margen <= 0 && "bg-rose-50 text-rose-700 border-rose-200")}>
+                                {margen > 0 ? "+" : ""}{margen}%
+                              </Badge>
                             </TableCell>
-                            <TableCell className="text-center text-slate-500">
-                              {producto.stock_minimo}
+                            <TableCell className="text-center">
+                              <div className="flex flex-col items-center">
+                                <div className="flex items-baseline gap-1">
+                                  <span
+                                    className={cn(
+                                      "text-lg font-bold",
+                                      agotado && "text-red-600",
+                                      stockBajo && !agotado && "text-amber-600",
+                                      !stockBajo && "text-emerald-600",
+                                    )}
+                                  >
+                                    {producto.stock}
+                                  </span>
+                                  <span className="text-xs font-medium text-slate-500 uppercase">
+                                    {producto.unidad_medida || 'UN'}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] text-slate-400">
+                                  Mín: {producto.stock_minimo}
+                                </span>
+                              </div>
                             </TableCell>
-                            <TableCell className="text-right font-medium text-emerald-600">
-                              {formatCurrency(
-                                producto.stock * producto.precio_compra,
+                            <TableCell className="text-right">
+                              <div className="flex flex-col items-end">
+                                <span className="font-semibold text-blue-700" title="Proyección al Precio de Venta">
+                                  {formatCurrency(producto.stock * producto.precio_venta)}
+                                </span>
+                                <span className="text-[10px] text-slate-500" title="Valorización al costo">
+                                  Costo Inv: {formatCurrency(producto.stock * producto.precio_compra)}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-center text-xs text-slate-500 font-medium whitespace-nowrap">
+                              {producto.updated_at ? (
+                                <div className="flex flex-col items-center">
+                                  <span>{formatDateTime(producto.updated_at).split(',')[0]}</span>
+                                  <span className="text-[10px] text-slate-400 opacity-70">{formatDateTime(producto.updated_at).split(',')[1] || ''}</span>
+                                </div>
+                              ) : (
+                                "Sin mov."
                               )}
                             </TableCell>
                             <TableCell className="text-center">
                               {agotado ? (
-                                <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+                                <Badge className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100">
                                   Agotado
                                 </Badge>
                               ) : stockBajo ? (
-                                <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">
+                                <Badge className="bg-amber-50 text-amber-600 border-amber-200 hover:bg-amber-100">
                                   <AlertTriangle className="h-3 w-3 mr-1" />
                                   Bajo
                                 </Badge>
                               ) : (
-                                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
-                                  OK
+                                <Badge className="bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100">
+                                  Óptimo
                                 </Badge>
                               )}
                             </TableCell>
+                            {isAdmin() && (
+                                <TableCell>
+                                    <div className="flex items-center justify-center gap-1 opacity-70 hover:opacity-100 transition-opacity">
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-7 w-7 bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700"
+                                            onClick={() => handleOpenDialog('entrada', producto.id)}
+                                            title="Ingresar Stock"
+                                        >
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            className="h-7 w-7 bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100 hover:text-amber-700"
+                                            onClick={() => handleOpenDialog('salida', producto.id)}
+                                            title="Retirar Stock"
+                                        >
+                                            <Minus className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                </TableCell>
+                            )}
                           </TableRow>
                         );
                       })}
@@ -376,6 +452,34 @@ const Inventario = () => {
                 <div className="text-center py-12 text-slate-400">
                   <Package className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>No hay productos</p>
+                </div>
+              )}
+              {/* Pagination Stock */}
+              {totalPagesStock > 1 && (
+                <div className="flex items-center justify-between border-t border-slate-200 mt-4 pt-4">
+                  <span className="text-sm text-slate-500">
+                    Página {pageStock} de {totalPagesStock}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPageStock(p => Math.max(1, p - 1))}
+                      disabled={pageStock === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPageStock(p => Math.min(totalPagesStock, p + 1))}
+                      disabled={pageStock === totalPagesStock}
+                    >
+                      Siguiente
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -493,6 +597,34 @@ const Inventario = () => {
                 <div className="text-center py-12 text-slate-400">
                   <ClipboardList className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>No hay movimientos registrados</p>
+                </div>
+              )}
+              {/* Pagination Kardex */}
+              {totalPagesMovimientos > 1 && (
+                <div className="flex items-center justify-between border-t border-slate-200 mt-4 pt-4">
+                  <span className="text-sm text-slate-500">
+                    Página {pageMovimientos} de {totalPagesMovimientos}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPageMovimientos(p => Math.max(1, p - 1))}
+                      disabled={pageMovimientos === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPageMovimientos(p => Math.min(totalPagesMovimientos, p + 1))}
+                      disabled={pageMovimientos === totalPagesMovimientos}
+                    >
+                      Siguiente
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
                 </div>
               )}
             </CardContent>

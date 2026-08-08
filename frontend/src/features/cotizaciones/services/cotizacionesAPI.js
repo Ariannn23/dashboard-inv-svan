@@ -16,6 +16,11 @@ export const cotizacionesAPI = {
     return data;
   },
   
+  update: async (id, cotizacionData) => {
+    const { data } = await api.put(`/cotizaciones/${id}`, cotizacionData);
+    return data;
+  },
+  
   convertirAVenta: async (id, tipo_comprobante = "boleta") => {
     const { data } = await api.post(`/cotizaciones/${id}/convertir-venta?tipo_comprobante=${tipo_comprobante}`);
     return data;

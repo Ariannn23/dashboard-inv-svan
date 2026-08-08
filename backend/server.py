@@ -32,7 +32,7 @@ from jose import JWTError, jwt
 # Internos
 from core.config import settings
 from core.database import engine, Base, get_db
-from models import User, Producto, Cliente, Proveedor, Venta, VentaItem, Compra, CompraItem, Movimiento, Cotizacion, CotizacionItem
+from models import User, Producto, Cliente, Proveedor, Venta, VentaItem, Compra, CompraItem, Movimiento, Cotizacion, CotizacionItem, NotaCredito, NotaCreditoItem
 
 import uvicorn
 
@@ -140,15 +140,17 @@ class ProductoCreate(BaseModel):
     stock_minimo: int = 5
     unidad_medida: str = "unidad"
     descripcion: Optional[str] = None
+    activo: bool = True
 
 # Cliente
 class ClienteCreate(BaseModel):
-    tipo: str
+    tipo: str  # "persona" | "empresa"
     nombre: str
-    documento: Optional[str] = None
+    documento: str
     telefono: Optional[str] = None
     email: Optional[str] = None
     direccion: Optional[str] = None
+    activo: bool = True
 
 # Proveedor
 class ProveedorCreate(BaseModel):
@@ -157,6 +159,7 @@ class ProveedorCreate(BaseModel):
     telefono: Optional[str] = None
     email: Optional[str] = None
     direccion: Optional[str] = None
+    activo: bool = True
 
 # Venta
 class VentaItemSchema(BaseModel):
@@ -197,6 +200,18 @@ class CotizacionItemSchema(BaseModel):
 class CotizacionCreate(BaseModel):
     cliente_id: Optional[str] = None
     items: List[CotizacionItemSchema]
+    notas: Optional[str] = None
+
+# Nota de Crédito
+class NotaCreditoItemSchema(BaseModel):
+    producto_id: str
+    cantidad: int
+    precio_unitario: float
+
+class NotaCreditoCreate(BaseModel):
+    venta_id: str
+    items: List[NotaCreditoItemSchema]
+    motivo: str
     notas: Optional[str] = None
 
 # Reportes
@@ -288,6 +303,7 @@ def venta_to_dict(v: Venta) -> dict:
         "fecha": v.fecha.isoformat() if v.fecha else None,
         "notas": v.notas,
         "items": [venta_item_to_dict(i) for i in v.items] if v.items else [],
+        "nota_credito_numero": v.notas_credito[0].numero_nota if v.notas_credito else None,
     }
 
 def compra_item_to_dict(ci: CompraItem) -> dict:
@@ -306,8 +322,9 @@ def compra_to_dict(c: Compra) -> dict:
         "numero_orden": c.numero_orden,
         "proveedor_id": str(c.proveedor_id),
         "proveedor_nombre": c.proveedor.nombre if c.proveedor else None,
+        "proveedor_documento": c.proveedor.ruc if c.proveedor else None,
         "usuario_id": str(c.usuario_id),
-        "usuario_nombre": c.usuario.nombre if c.usuario else None,
+        "comprador_nombre": c.usuario.nombre if c.usuario else None,
         "subtotal": float(c.subtotal),
         "total": float(c.total),
         "estado": c.estado,
@@ -315,6 +332,35 @@ def compra_to_dict(c: Compra) -> dict:
         "fecha_recepcion": c.fecha_recepcion.isoformat() if c.fecha_recepcion else None,
         "notas": c.notas,
         "items": [compra_item_to_dict(i) for i in c.items] if c.items else [],
+    }
+
+def nota_credito_item_to_dict(nci: NotaCreditoItem) -> dict:
+    return {
+        "id": str(nci.id),
+        "producto_id": str(nci.producto_id),
+        "producto_nombre": nci.producto.nombre if nci.producto else None,
+        "cantidad": nci.cantidad,
+        "precio_unitario": float(nci.precio_unitario),
+        "subtotal": float(nci.subtotal),
+    }
+
+def nota_credito_to_dict(nc: NotaCredito) -> dict:
+    return {
+        "id": str(nc.id),
+        "venta_id": str(nc.venta_id),
+        "venta_numero": nc.venta.numero_comprobante if nc.venta else None,
+        "cliente_id": str(nc.cliente_id) if nc.cliente_id else None,
+        "cliente_nombre": nc.cliente.nombre if nc.cliente else None,
+        "usuario_id": str(nc.usuario_id),
+        "usuario_nombre": nc.usuario.nombre if nc.usuario else None,
+        "numero_nota": nc.numero_nota,
+        "motivo": nc.motivo,
+        "subtotal": float(nc.subtotal),
+        "igv": float(nc.igv),
+        "total": float(nc.total),
+        "fecha": nc.fecha.isoformat() if nc.fecha else None,
+        "notas": nc.notas,
+        "items": [nota_credito_item_to_dict(i) for i in nc.items] if nc.items else [],
     }
 
 def movimiento_to_dict(m: Movimiento) -> dict:
@@ -386,6 +432,16 @@ async def get_next_cotizacion_number(db: AsyncSession) -> str:
     result = await db.execute(text("SELECT nextval('seq_cotizacion')"))
     num = result.scalar()
     return f"COT-{num:08d}"
+
+async def get_next_nota_credito_number(db: AsyncSession) -> str:
+    # Intenta usar secuencia, si falla usa count
+    try:
+        result = await db.execute(text("SELECT nextval('seq_nota_credito')"))
+        num = result.scalar()
+    except:
+        result = await db.execute(select(func.count(NotaCredito.id)))
+        num = result.scalar() + 1
+    return f"NC01-{num:08d}"
 
 
 # =============================================
@@ -597,6 +653,7 @@ async def update_producto(
     p.stock_minimo = producto.stock_minimo
     p.unidad_medida = producto.unidad_medida
     p.descripcion = producto.descripcion
+    p.activo = producto.activo
     p.updated_at = datetime.utcnow()
 
     await db.commit()
@@ -703,6 +760,7 @@ async def update_cliente(
     c.telefono = cliente.telefono
     c.email = cliente.email
     c.direccion = cliente.direccion
+    c.activo = cliente.activo
 
     await db.commit()
     return {"message": "Cliente actualizado"}
@@ -803,6 +861,7 @@ async def update_proveedor(
     p.telefono = proveedor.telefono
     p.email = proveedor.email
     p.direccion = proveedor.direccion
+    p.activo = proveedor.activo
 
     await db.commit()
     return {"message": "Proveedor actualizado"}
@@ -931,6 +990,7 @@ async def get_ventas(
     fecha_inicio: Optional[str] = None,
     fecha_fin: Optional[str] = None,
     tipo_comprobante: Optional[str] = None,
+    search: Optional[str] = None,
     page: int = 1,
     limit: int = 50,
     current_user: User = Depends(get_current_user),
@@ -939,6 +999,8 @@ async def get_ventas(
     q = select(Venta).order_by(Venta.fecha.desc())
     if tipo_comprobante:
         q = q.where(Venta.tipo_comprobante == tipo_comprobante)
+    if search:
+        q = q.where(Venta.numero_comprobante.ilike(f"%{search}%"))
     if fecha_inicio:
         q = q.where(Venta.fecha >= datetime.fromisoformat(fecha_inicio))
     if fecha_fin:
@@ -1043,6 +1105,218 @@ async def get_venta_pdf(
         content=buffer.getvalue(),
         media_type="application/pdf",
         headers={"Content-Disposition": f"attachment; filename=comprobante_{venta['numero_comprobante']}.pdf"},
+    )
+
+# =============================================
+# NOTAS DE CRÉDITO ENDPOINTS
+# =============================================
+
+@api_router.post("/notas-credito")
+async def create_nota_credito(
+    nc_in: NotaCreditoCreate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        # Generar número dentro de la sesión (la secuencia ya existe)
+        numero_nota = await get_next_nota_credito_number(db)
+        
+        # 1. Validar venta
+        venta = await db.get(Venta, uuid.UUID(nc_in.venta_id))
+        if not venta:
+            raise HTTPException(status_code=404, detail="Venta no encontrada")
+        if venta.estado == "anulada":
+            raise HTTPException(status_code=400, detail="Esta venta ya ha sido anulada")
+
+        subtotal_nc = 0.0
+        items_data = []
+
+        # 3. Procesar items y revertir stock
+        for item in nc_in.items:
+            prod_id = uuid.UUID(item.producto_id)
+            prod = await db.get(Producto, prod_id)
+            if not prod:
+                raise HTTPException(status_code=400, detail=f"Producto {item.producto_id} no encontrado")
+
+            # Revertir stock (Entrada al inventario)
+            stock_anterior = prod.stock
+            stock_nuevo = prod.stock + item.cantidad
+            prod.stock = stock_nuevo
+            prod.updated_at = datetime.utcnow()
+
+            item_subtotal = float(item.cantidad * item.precio_unitario)
+            subtotal_nc += item_subtotal
+            items_data.append({
+                "producto_id": prod_id,
+                "producto_nombre": prod.nombre,
+                "cantidad": item.cantidad,
+                "precio_unitario": item.precio_unitario,
+                "subtotal": item_subtotal,
+                "stock_anterior": stock_anterior,
+                "stock_nuevo": stock_nuevo,
+            })
+
+        igv_nc = round(subtotal_nc * 0.18, 2)
+        total_nc = round(subtotal_nc + igv_nc, 2)
+
+        # 4. Crear Nota de Crédito
+        nueva_nc = NotaCredito(
+            venta_id=venta.id,
+            cliente_id=venta.cliente_id,
+            usuario_id=current_user.id,
+            numero_nota=numero_nota,
+            motivo=nc_in.motivo,
+            subtotal=subtotal_nc,
+            igv=igv_nc,
+            total=total_nc,
+            notas=nc_in.notas,
+        )
+        db.add(nueva_nc)
+        await db.flush()
+
+        # 5. Crear items y movimientos de inventario
+        for item_d in items_data:
+            nci = NotaCreditoItem(
+                nota_credito_id=nueva_nc.id,
+                producto_id=item_d["producto_id"],
+                cantidad=item_d["cantidad"],
+                precio_unitario=item_d["precio_unitario"],
+                subtotal=item_d["subtotal"],
+            )
+            db.add(nci)
+
+            mov = Movimiento(
+                producto_id=item_d["producto_id"],
+                tipo="entrada", # Entrada porque devolvemos stock
+                cantidad=item_d["cantidad"],
+                stock_anterior=item_d["stock_anterior"],
+                stock_nuevo=item_d["stock_nuevo"],
+                referencia=numero_nota,
+                usuario_id=current_user.id,
+                notas=f"Nota de Crédito {numero_nota} (Anulación Venta {venta.numero_comprobante})",
+            )
+            db.add(mov)
+
+        # 6. Actualizar estado de la venta a ANULADA
+        venta.estado = "anulada"
+        venta.notas = (venta.notas or "") + f"\n[ANULADA CON NC: {numero_nota} - Motivo: {nc_in.motivo}]"
+
+        await db.commit()
+        return {
+            "message": "Nota de crédito registrada exitosamente",
+            "id": str(nueva_nc.id),
+            "numero_nota": numero_nota,
+        }
+    except HTTPException:
+        await db.rollback()
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Error al emitir nota de crédito: {str(e)}")
+
+@api_router.get("/notas-credito")
+async def get_notas_credito(
+    search: Optional[str] = None,
+    page: int = 1,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    q = select(NotaCredito).order_by(NotaCredito.fecha.desc())
+    if search:
+        q = q.where(
+            or_(
+                NotaCredito.numero_nota.ilike(f"%{search}%"),
+                NotaCredito.motivo.ilike(f"%{search}%"),
+            )
+        )
+    
+    limit = min(limit, 200)
+    skip = (page - 1) * limit
+    total_result = await db.execute(select(func.count()).select_from(q.subquery()))
+    total = total_result.scalar()
+    result = await db.execute(q.offset(skip).limit(limit))
+    return {
+        "data": [nota_credito_to_dict(nc) for nc in result.scalars().all()],
+        "total": total,
+        "page": page,
+        "pages": max(1, -(-total // limit)),
+        "limit": limit,
+    }
+
+@api_router.get("/notas-credito/{id}/pdf")
+async def get_nota_credito_pdf(
+    id: str,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    nc_obj = await db.get(NotaCredito, uuid.UUID(id))
+    if not nc_obj:
+        raise HTTPException(status_code=404, detail="Nota de crédito no encontrada")
+
+    nc = nota_credito_to_dict(nc_obj)
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, rightMargin=40, leftMargin=40, topMargin=40, bottomMargin=40)
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle("CustomTitle", parent=styles["Heading1"], fontSize=18, spaceAfter=6, textColor=colors.HexColor("#BE123C")) # Rose color for NC
+    subtitle_style = ParagraphStyle("Subtitle", parent=styles["Normal"], fontSize=10, textColor=colors.HexColor("#64748B"))
+
+    elements = []
+    elements.append(Paragraph("RUC: 20123456789", subtitle_style))
+    elements.append(Paragraph("Av. Principal 123, Lima, Perú", subtitle_style))
+    elements.append(Spacer(1, 20))
+
+    elements.append(Paragraph("<b>NOTA DE CRÉDITO ELECTRÓNICA</b>", styles["Heading2"]))
+    elements.append(Paragraph(f"N° {nc['numero_nota']}", styles["Normal"]))
+    fecha_str = nc["fecha"][:10] if nc["fecha"] else ""
+    elements.append(Paragraph(f"Fecha de Emisión: {fecha_str}", styles["Normal"]))
+    elements.append(Paragraph(f"<b>Motivo:</b> {nc['motivo']}", styles["Normal"]))
+    elements.append(Paragraph(f"Documento de Referencia: {nc['venta_numero']}", styles["Normal"]))
+    elements.append(Spacer(1, 10))
+
+    if nc.get("cliente_nombre"):
+        elements.append(Paragraph(f"<b>Cliente:</b> {nc['cliente_nombre']}", styles["Normal"]))
+    elements.append(Spacer(1, 20))
+
+    table_data = [["Producto", "Cant.", "P. Unit.", "Subtotal"]]
+    for item in nc["items"]:
+        table_data.append([
+            item["producto_nombre"] or "",
+            str(item["cantidad"]),
+            f"S/ {item['precio_unitario']:.2f}",
+            f"S/ {item['subtotal']:.2f}",
+        ])
+
+    table_data.append(["", "", "Subtotal:", f"S/ {nc['subtotal']:.2f}"])
+    table_data.append(["", "", "IGV (18%):", f"S/ {nc['igv']:.2f}"])
+    table_data.append(["", "", "TOTAL:", f"S/ {nc['total']:.2f}"])
+
+    table = Table(table_data, colWidths=[3 * inch, 0.8 * inch, 1.2 * inch, 1.2 * inch])
+    table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#BE123C")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("ALIGN", (0, 0), (-1, -1), "CENTER"),
+        ("ALIGN", (0, 1), (0, -4), "LEFT"),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 10),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 12),
+        ("BACKGROUND", (0, 1), (-1, -4), colors.white),
+        ("TEXTCOLOR", (0, 1), (-1, -1), colors.black),
+        ("FONTNAME", (0, -3), (-1, -1), "Helvetica-Bold"),
+        ("GRID", (0, 0), (-1, -4), 1, colors.HexColor("#E2E8F0")),
+        ("LINEABOVE", (2, -3), (-1, -3), 1, colors.HexColor("#BE123C")),
+    ]))
+    elements.append(table)
+    elements.append(Spacer(1, 30))
+    elements.append(Paragraph("Este documento sustenta la anulación o devolución de la operación de referencia.", ParagraphStyle("Footer", parent=styles["Normal"], fontSize=8, textColor=colors.HexColor("#94A3B8"), alignment=1)))
+
+    doc.build(elements)
+    buffer.seek(0)
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename=nota_credito_{nc['numero_nota']}.pdf"},
     )
 
 
@@ -1881,6 +2155,56 @@ async def create_cotizacion(
         await db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
+@api_router.put("/cotizaciones/{id}")
+async def update_cotizacion(
+    id: str,
+    cotizacion: CotizacionCreate, 
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user)
+):
+    cot = await db.get(Cotizacion, uuid.UUID(id))
+    if not cot:
+        raise HTTPException(status_code=404, detail="Cotización no encontrada")
+    
+    if cot.estado not in ["borrador", "enviada"]:
+        raise HTTPException(status_code=400, detail="Solo se pueden editar cotizaciones en estado borrador o enviada")
+
+    if not cotizacion.items:
+        raise HTTPException(status_code=400, detail="La cotización debe tener al menos un producto")
+
+    try:
+        await db.execute(delete(CotizacionItem).where(CotizacionItem.cotizacion_id == cot.id))
+        
+        subtotal_general = sum(item.cantidad * item.precio_unitario for item in cotizacion.items)
+        igv_general = subtotal_general * 0.18
+        total_general = subtotal_general + igv_general
+
+        cot.cliente_id = uuid.UUID(cotizacion.cliente_id) if cotizacion.cliente_id else None
+        cot.subtotal = subtotal_general
+        cot.igv = igv_general
+        cot.total = total_general
+        cot.notas = cotizacion.notas
+        
+        for item in cotizacion.items:
+            nuevo_item = CotizacionItem(
+                cotizacion_id=cot.id,
+                producto_id=uuid.UUID(item.producto_id),
+                cantidad=item.cantidad,
+                precio_unitario=item.precio_unitario,
+                subtotal=item.cantidad * item.precio_unitario
+            )
+            db.add(nuevo_item)
+
+        await db.commit()
+        return {
+            "message": "Cotización actualizada",
+            "id": str(cot.id),
+            "numero_cotizacion": cot.numero_cotizacion
+        }
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.get("/cotizaciones/{id}")
 async def get_cotizacion(id: str, db: AsyncSession = Depends(get_db)):
     cotizacion = await db.get(Cotizacion, uuid.UUID(id))
@@ -1912,7 +2236,7 @@ async def convertir_cotizacion_venta(
             if prod.stock < item.cantidad:
                 raise ValueError(f"Stock insuficiente para '{prod.nombre}'")
                 
-            subtotal_item = item.cantidad * item.precio_unitario
+            subtotal_item = float(item.cantidad * item.precio_unitario)
             subtotal_general += subtotal_item
             
             prod.stock -= item.cantidad

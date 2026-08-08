@@ -603,15 +603,6 @@ const Ventas = () => {
         <DialogContent className="max-w-sm p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
           {/* Header verde con icono centrado */}
           <div className="relative bg-gradient-to-br from-emerald-500 to-emerald-600 px-6 pt-8 pb-10 flex flex-col items-center text-center">
-            {/* Botón cerrar personalizado */}
-            <DialogClose asChild>
-              <button
-                className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/20 hover:bg-white/35 transition-colors flex items-center justify-center text-white/80 hover:text-white"
-                aria-label="Cerrar"
-              >
-                <X className="h-4 w-4" strokeWidth={2.5} />
-              </button>
-            </DialogClose>
             <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mb-4 ring-4 ring-white/30">
               <Check className="h-10 w-10 text-white" strokeWidth={3} />
             </div>
